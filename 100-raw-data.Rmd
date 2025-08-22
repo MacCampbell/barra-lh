@@ -1,0 +1,37 @@
+---
+title: "100-raw-data"
+output: html_document
+date: "2025-08-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(grid)
+library(ggpubr)
+```
+
+
+Download data
+
+
+export CKAN_API_TOKEN=
+
+executing bash script
+
+
+## Align to reference genome 
+
+in data/align
+
+bash ../../doAlign-zipped.sh to-align.txt /home/maccamp/lates-wgs/genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna.gz
+
+ls | grep R1 > f1
+ls | grep R2 > r1
+
+29 fish
+
+paste f1 r1 n1 > toalign1.txt

@@ -1,0 +1,66 @@
+---
+title: "101-gwas"
+output: html_document
+date: "2025-08-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+__2__ Winter-Spring    
+`bash $HOME/shernook/202-do-asso.sh $HOME/shernook/bamlists/bamlist156-winter-spring.bamlist $HOME/shernook/meta/test.chroms $HOME/shernook/bamlists/bamlist156-winter-spring.pheno`     
+(this is in outputs/301)    
+22 winter-run
+61 spring-run
+
+```{r}
+d1 <-  read_tsv("outputs/301/NC_037097.1-asso.lrt0.gz")
+d16 <- read_tsv("outputs/301/NC_037112.1-asso.lrt0.gz")
+d28 <- read_tsv("outputs/301/NC_037124.1-asso.lrt0.gz")
+d34 <- read_tsv("outputs/301/NC_037130.1-asso.lrt0.gz")
+
+data<-bind_rows(d1,d16,d28,d34) 
+
+data <- data %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
+  filter(log10p > 1) %>% filter(log10p!="Inf")
+
+data %>% arrange(-log10p) %>% head()
+```
+
+```{r}
+dd <- data %>% mutate(Index=1:n())
+
+chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  select(Chromosome,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+outliers <- dd %>% filter(log10p >=10)
+#Make enough colors
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+
+ggplot(dd) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  geom_hline(yintercept = 6, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 10, lty=2, alpha=0.6) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("-log10(p)") +
+  xlab("Chromosome") +
+  ggtitle("Spring vs Winter - Combined Data") +
+  theme(plot.title = element_text(hjust=0.5) )
+
+ggsave("outputs/301/spring-winter-combined-data.jpeg")
+```
