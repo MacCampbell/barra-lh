@@ -83,7 +83,7 @@ stats<-read_csv("outputs/100/align1.csv", col_names = c("library-id","Aligned","
 stats2<-read_csv("outputs/100/temp.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
 stats3<-read_csv("outputs/100/align3.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
 stats<-bind_rows(stats,stats2,stats3)
-m<-left_join(m,stats) %>% mutate(Pheno=ifelse(Phenotype=="SSS",0,1)) %>% mutate(Path=paste0("data/bams/",`library-id`,".sort.flt.bam"))
+m<-left_join(m,stats) %>% mutate(Pheno=ifelse(Phenotype=="SSS",0,1)) %>% mutate(Path=paste0("/home/maccamp/barra-lh/data/bams/",`library-id`,".sort.flt.bam"))
 median(na.omit(m$Coverage))
 ```
 
@@ -101,6 +101,7 @@ m %>% filter(Coverage>10) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n()
 m %>% filter(Coverage>10) %>% select(Path) %>% write_tsv("bamlists/test44.bamlist", col_names = FALSE)
 m %>% filter(Coverage>10) %>% select(Pheno) %>% write_tsv("bamlists/test44.pheno", col_names = FALSE)
 m44<-m %>% filter(Coverage>10)
+meta<-m44
 ```
 SFLc0592 is the low baller here
 can put sort.flt.bams and indices in data/bams
@@ -128,7 +129,7 @@ srun -p high -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angs
 
 
 ```{r}
-m <- as.matrix(read.table("outputs/1304/48-ibs-90.covMat"))
+m <- as.matrix(read.table("outputs/100/44-ibs-90-Lcal01.covMat"))
 eig <- eigen(m)
 var<-eig$values/sum(eig$values)
 cumvar<-cumsum(eig$values)/sum(eig$values)
@@ -148,32 +149,42 @@ scree<-ggplot(vdf) +
   theme(plot.title = element_text(hjust=0.5, face="bold"))
 
 scree
-ggsave("outputs/1304/Australasian-scree-plot.jpeg")
+ggsave("outputs/100/scree-plot.jpeg")
 ```
 
 
 ```{r}
 covs<-eig$vectors[,1:3] %>% as_tibble() %>% bind_cols(meta)
 
-text12<-covs %>% select(Run, Region, V1, V2) %>%
-  group_by(Region) %>% summarize(Count=n(), x=mean(V1), y=mean(V2))
-
-text12L<-covs %>% select(Run, Locality, V1, V2) %>%
-  group_by(Locality) %>% summarize(Count=n(), x=mean(V1), y=mean(V2))
-
 pc12<-ggplot(covs) +
-  geom_point(aes(x=V1, y=V2, fill=Locality), pch=21, alpha=0.75, cex=2) +
+  geom_point(aes(x=V1, y=V2, fill=Phenotype), pch=21, alpha=0.75, cex=2) +
   #  geom_text(aes(x=V1, y=V2, label=Run), pch=21, alpha=0.75, cex=2) +
-  geom_text_repel(data=text12, aes(x=x, y=y, label=Region), max.overlaps = Inf) +
-  geom_text_repel(data=text12L, aes(x=x, y=y, label=Locality), size=3, max.overlaps = Inf) +
-  xlab(paste("PC1", " ", round((100*var[1]),2), "%", sep = "")) +
+   xlab(paste("PC1", " ", round((100*var[1]),2), "%", sep = "")) +
   ylab(paste("PC2", " ", round((100*var[2]),2), "%", sep = "")) +
+  scale_fill_manual(values=c("red","blue")) +
   theme_bw() +
   theme(panel.grid=element_blank()) +
-  scale_fill_viridis_d(option="H") +
   ggtitle("PCs 1 and 2") +
   theme(plot.title = element_text(hjust=0.5, face="bold"))
 
 pc12
-ggsave("outputs/1304/australasian-lates-pc12.jpeg")
+ggsave("outputs/100/pc12.jpeg")
+```
+
+
+Must have a few wayward souls
+
+```{r}
+pc12<-ggplot(covs) +
+  geom_point(aes(x=V1, y=V2, fill=Coverage), pch=21, alpha=0.75, cex=2) +
+  #  geom_text(aes(x=V1, y=V2, label=Run), pch=21, alpha=0.75, cex=2) +
+   xlab(paste("PC1", " ", round((100*var[1]),2), "%", sep = "")) +
+  ylab(paste("PC2", " ", round((100*var[2]),2), "%", sep = "")) +
+  scale_fill_viridis_c() +
+  theme_bw() +
+  theme(panel.grid=element_blank()) +
+  ggtitle("PCs 1 and 2") +
+  theme(plot.title = element_text(hjust=0.5, face="bold"))
+
+pc12
 ```

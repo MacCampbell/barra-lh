@@ -5,6 +5,7 @@
 # `bash $HOME/barra-lh/101.1-do.asso.sh $HOME/barra-lh/bamlists/test44.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-h/bamlists/test44.phenos`
 
 # Generalized so that 1/2 of bamlist is specified for -minInd
+# Adjusting to lines/1.25, that should be 80%
 
 bamlist=$1
 list=$2
@@ -12,7 +13,7 @@ phenos=$3
 
 #Setting minInd to 1/2 of inds
 lines=$(wc -l < "$bamlist")
-thresh=$((lines/2))
+thresh=$((lines/1.25))
 
 while read chrom; do
   echo "#!/bin/bash -l

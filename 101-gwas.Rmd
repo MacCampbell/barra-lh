@@ -10,28 +10,44 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 
 ```{r}
 library(tidyverse)
+library(RColorBrewer)
 ```
 
 Chrom asso, execute in outputs/100
 
 ```{sh, eval=FALSE}
-bash $HOME/barra-lh/101.1-do.asso.sh $HOME/barra-lh/bamlists/test44.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-h/bamlists/test44.phenos`
+bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test44.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-lh/bamlists/test44.pheno
 ```
 
+There is a peak of association on NC_066856.1
+(base) maccamp@farm:~/barra-lh/outputs/101$ gunzip -c *lrt0.gz | sort -n -k 6 | tail  -n 20 | cut -f 1 | sort | uniq -c
+      2 NC_066833.1
+      3 NC_066835.1
+      1 NC_066837.1
+      1 NC_066842.1
+      1 NC_066844.1
+      1 NC_066845.1
+      1 NC_066846.1
+      1 NC_066850.1
+      1 NC_066852.1
+      1 NC_066855.1
+      7 NC_066856.1
 
 ```{r}
-d1 <-  read_tsv("outputs/301/NC_037097.1-asso.lrt0.gz")
-d16 <- read_tsv("outputs/301/NC_037112.1-asso.lrt0.gz")
-d28 <- read_tsv("outputs/301/NC_037124.1-asso.lrt0.gz")
-d34 <- read_tsv("outputs/301/NC_037130.1-asso.lrt0.gz")
-
-data<-bind_rows(d1,d16,d28,d34) 
+d1 <-  read_tsv("outputs/101/NC_066833.1-asso.lrt0.gz")
+d3 <- read_tsv("outputs/101/NC_066835.1-asso.lrt0.gz")
+d5 <- read_tsv("outputs/101/NC_066837.1-asso.lrt0.gz")
+d20 <-read_tsv("outputs/101/NC_066852.1-asso.lrt0.gz")
+d24<- read_tsv("outputs/101/NC_066856.1-asso.lrt0.gz")
+data<-bind_rows(d1,d3,d5,d20,d24) 
 
 data <- data %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
   filter(log10p > 1) %>% filter(log10p!="Inf")
 
 data %>% arrange(-log10p) %>% head()
 ```
+
+-log10(dchisq(26.124638,df=1)) -> -log10p of 6.78
 
 ```{r}
 dd <- data %>% mutate(Index=1:n())
@@ -60,8 +76,8 @@ ggplot(dd) +
   scale_color_manual(values=mycolors) +
   ylab("-log10(p)") +
   xlab("Chromosome") +
-  ggtitle("Spring vs Winter - Combined Data") +
+  ggtitle("SSS vs SFF GWAS") +
   theme(plot.title = element_text(hjust=0.5) )
 
-ggsave("outputs/301/spring-winter-combined-data.jpeg")
+ggsave("outputs/100/SSS-SFF-44-inds.jpeg")
 ```
