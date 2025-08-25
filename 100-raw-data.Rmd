@@ -80,9 +80,9 @@ compares to align1.checksums, align2.checksums, all files complete
 ```{r}
 m<-read_csv("meta/meta08222025.csv")
 stats<-read_csv("outputs/100/align1.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
-#stats2<-read_csv("outputs/100/align2.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
+stats2<-read_csv("outputs/100/temp.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
 stats3<-read_csv("outputs/100/align3.csv", col_names = c("library-id","Aligned","Dedup","Coverage"))
-stats<-bind_rows(stats,stats3)
+stats<-bind_rows(stats,stats2,stats3)
 m<-left_join(m,stats) %>% mutate(Pheno=ifelse(Phenotype=="SSS",0,1)) %>% mutate(Path=paste0("data/bams/",`library-id`,".sort.flt.bam"))
 median(na.omit(m$Coverage))
 ```
@@ -94,23 +94,29 @@ ggplot(m) +
   xlab("\nCoverage after Filtering") +
   theme_bw() +
   scale_fill_manual(values=c("red","blue"))
+ggsave("outputs/100/coverage.jpeg")
 ```
 ```{r}
-m %>% filter(Coverage>10) %>% group_by(Pheno) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage))
-
+m %>% filter(Coverage>10) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage))
+m %>% filter(Coverage>10) %>% select(Path) %>% write_tsv("bamlists/test44.bamlist", col_names = FALSE)
+m %>% filter(Coverage>10) %>% select(Pheno) %>% write_tsv("bamlists/test44.pheno", col_names = FALSE)
+m44<-m %>% filter(Coverage>10)
 ```
 SFLc0592 is the low baller here
 can put sort.flt.bams and indices in data/bams
 
 # Run a basic PCA using chrom01
 
-srun -p high -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
--bam bamlists/48.bamlist -r NC_066833.1 \
+````{sh, eval=FALSE}
+srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
+-bam bamlists/test44.bamlist -r NC_066833.1 \
 -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
--minInd 36 -minMapQ 20 -minQ 20 -GL 2 -doGLF 2 \
+-minInd 40 -minMapQ 20 -minQ 20 -GL 2 -doGLF 2 \
 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doIBS 1 -doCounts 1 -doCov 1 -makeMatrix 1 -minMaf 0.05 \
--out outputs/1304/48-ibs-90-Lcal01 > outputs/1304/48-ibs-90-Lcal01.out 2> outputs/1304/48-ibs-90-Lcal01.err &
+-out outputs/100/44-ibs-90-Lcal01 > outputs/100/44-ibs-90-Lcal01.out 2> outputs/100/44-ibs-90-Lcal01.err &
+
+```
 
 srun -p high -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
 -bam bamlists/48.bamlist -rf meta/lates-lgs.txt \
