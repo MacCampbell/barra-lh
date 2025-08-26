@@ -42,12 +42,20 @@ d24<- read_tsv("outputs/101/NC_066856.1-asso.lrt0.gz")
 data<-bind_rows(d1,d3,d5,d20,d24) 
 
 data <- data %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
-  filter(log10p > 1) %>% filter(log10p!="Inf")
+  filter(log10p > 2) %>% filter(log10p!="Inf")
 
 data %>% arrange(-log10p) %>% head()
 ```
 
+With 50% threshold 
+NC_066856.1 high score
 -log10(dchisq(26.124638,df=1)) -> -log10p of 6.78
+
+We can alter these scores by including three more individuals or four if we allow really low coverage. Why not three the three higher coverage ones?
+
+We can also use the Taiwanese fish as known phenotypes, then maybe need to include PCs. This can boost our catadromous sample sizes.
+
+What about the QLD fish?
 
 ```{r}
 dd <- data %>% mutate(Index=1:n())
@@ -79,5 +87,12 @@ ggplot(dd) +
   ggtitle("SSS vs SFF GWAS") +
   theme(plot.title = element_text(hjust=0.5) )
 
-ggsave("outputs/100/SSS-SFF-44-inds.jpeg")
+ggsave("outputs/101/SSS-SFF-44-inds.jpeg")
+```
+
+
+Find peaks
+
+```{r}
+dd %>% filter(log10p > 4)
 ```
