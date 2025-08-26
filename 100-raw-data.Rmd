@@ -105,6 +105,8 @@ ggsave("outputs/100/coverage.jpeg")
 m %>% filter(Coverage>8) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage))
 m %>% filter(Coverage>8) %>% select(Path) %>% write_tsv("bamlists/test47.bamlist", col_names = FALSE)
 m %>% filter(Coverage>8) %>% select(Pheno) %>% write_tsv("bamlists/test47.pheno", col_names = FALSE)
+m %>% filter(Coverage>8) %>% select(specimen_id) %>% write_tsv("bamlists/test47.names", col_names = FALSE)
+
 m47<-m %>% filter(Coverage>8)
 meta<-m47
 ```
@@ -130,6 +132,8 @@ srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angs
 -doIBS 1 -doCounts 1 -doCov 1 -makeMatrix 1 -minMaf 0.05 \
 -out outputs/100/47-ibs-90-Lcal01 > outputs/100/47-ibs-90-Lcal01.out 2> outputs/100/47-ibs-90-Lcal01.err &
 
+
+
 #including chrom of interest
 srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
 -bam bamlists/test44.bamlist -r NC_066856.1 \
@@ -150,7 +154,7 @@ srun -p high -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angs
 
 
 ```{r}
-m <- as.matrix(read.table("outputs/100/44-ibs-90-Lcal01.covMat"))
+m <- as.matrix(read.table("outputs/100/47-ibs-90-Lcal01.covMat"))
 eig <- eigen(m)
 var<-eig$values/sum(eig$values)
 cumvar<-cumsum(eig$values)/sum(eig$values)

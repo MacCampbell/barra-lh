@@ -45,3 +45,25 @@ m56 %>% select(Pheno) %>% write_tsv("~/github/barra-lh/bamlists/test56.pheno", c
 ```{sh, eval=FALSE}
 bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test56.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-lh/bamlists/test56.pheno
 ```
+
+```{r}
+list<-list.files(path = "outputs/102", pattern="lrt0.gz", full.names = TRUE)
+lrts<-lapply(list, read_tsv) %>% bind_rows() %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
+  filter(log10p > 1)
+```
+
+
+```{r}
+ggplot(lrts) + geom_point(aes(x=Position, y=log10p, color=log10p), alpha=0.75, cex=0.7)+
+  geom_hline(yintercept = 6, lty=2, alpha=0.6) +
+  scale_color_gradient(low="grey",high="skyblue") +
+  theme_bw()+
+  theme(axis.text.x= element_text(angle=45,hjust=1)) +
+  theme(panel.grid = element_blank()) +
+  ylab("-log10(p)") +
+  ggtitle("SFF vs SSS GWAS") +
+  facet_wrap(.~Chromosome, scales = "free_x") +
+  theme(plot.title = element_text(hjust=0.5))
+
+ggsave("outputs/102/qld-taiwan-gwas.jpeg", width=14, height=14)
+```

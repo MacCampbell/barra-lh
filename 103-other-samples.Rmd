@@ -1,0 +1,41 @@
+---
+title: "103-other-samples"
+output: html_document
+date: "2025-08-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(RColorBrewer)
+library(ggrepel)
+library(ggpubr)
+```
+
+Have other samples that may be used:
+
+Fitzroy QLD -> Life history type?
+
+Roper R -> Life history type?
+
+Daly R -> Life history type, presumably catadromous...
+
+Fly R ?
+QLD Hichinbrook?
+Darwin Harbor?
+Broome?
+QLD mainstream?
+
+Using Fitzroy, Mainstream, and these ones.
+
+Fitzroy in lates-wgs/data/fitzroy Fitz01-Fitz12, Fitz01/02 failed, requeing
+
+QLD in 
+/home/maccamp/lates-wgs/data/hatcheries Mainstream1,2,3,4,5
+/home/maccamp/lates-wgs/data/taiwan Mainstream6-12
+
+(1) Generate single chrom PCA
+(2) Call snps and see about region of interest?

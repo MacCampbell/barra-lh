@@ -40,7 +40,7 @@ There is a peak of association on NC_066856.1
 d1 <-  read_tsv("outputs/101/NC_066833.1-asso.lrt0.gz")
 d3 <- read_tsv("outputs/101/NC_066835.1-asso.lrt0.gz")
 d5 <- read_tsv("outputs/101/NC_066837.1-asso.lrt0.gz")
-d20 <-read_tsv("outputs/101/NC_066852.1-asso.lrt0.gz")
+d20 <-read_tsv("outputs/101/NC_066844.1-asso.lrt0.gz")
 d24<- read_tsv("outputs/101/NC_066856.1-asso.lrt0.gz")
 data<-bind_rows(d1,d3,d5,d20,d24) 
 
@@ -76,8 +76,8 @@ mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
 ggplot(dd) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
   geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
-  geom_hline(yintercept = 6, lty=2, alpha=0.6) +
-  geom_hline(yintercept = 10, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 5, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 8, lty=2, alpha=0.6) +
   theme_bw() +
   scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
   theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
@@ -97,5 +97,88 @@ ggsave("outputs/101/SSS-SFF-44-inds.jpeg")
 Find peaks
 
 ```{r}
-dd %>% filter(log10p > 4)
+dd %>% filter(log10p > 5)
 ```
+
+```{r}
+list<-list.files(path = "outputs/101", pattern="lrt0.gz", full.names = TRUE)
+lrts<-lapply(list, read_tsv) %>% bind_rows() %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
+  filter(log10p > 2)
+```
+
+
+```{r}
+dd <- lrts %>% filter(log10p !=Inf) %>% mutate(Index=1:n())
+
+chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  select(Chromosome,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+outliers <- dd %>% filter(log10p >=10)
+#Make enough colors
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+
+ggplot(dd) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  geom_hline(yintercept = 5, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 8, lty=2, alpha=0.6) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("-log10(p)") +
+  xlab("Chromosome") +
+  ggtitle("SSS vs SFF GWAS") +
+  theme(plot.title = element_text(hjust=0.5) )
+
+ggsave("outputs/101/SSS-SFF-44-inds-all-chroms.jpeg")
+```
+
+
+
+
+
+also, the small contigs...
+
+#Adding a few more individuals
+
+in outputs/101/small
+
+```{sh, eval=FALSE}
+bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test47.bamlist $HOME/barra-lh/genome/small-contigs.tsv  $HOME/barra-lh/bamlists/test47.pheno
+```
+
+
+calls
+Calls with GLF, only one chrom
+-rf meta/lates-lgs.txt
+
+```{sh, eval=FALSE}
+srun -t 24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
+-minInd 42 -bam bamlists/test47.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-r NC_066856.1 -out outputs/101/snps-wgs-05-glf-chrom24  \
+-minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
+-doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/101/snps-wgs-05-glf.out 2> outputs/101/snps-wgs-05-glf.err &
+```
+
+40,312 sites
+
+```{sh, eval=FALSE}
+plink --tped snps-wgs-05-glf-chrom24.tped --tfam snps-wgs-05-glf-chrom24.tfam  --out plink-binary-05 --recode --allow-extra-chr --noweb
+plink --ped plink-binary-05.ped --map plink-binary-05.map --recode vcf --allow-extra-chr -out plink-05
+bgzip plink-05.vcf 
+tabix plink-05.vcf.gz
+
+#renaming vcf bcftools/1.13
+module load bcftools
+
+bcftools reheader --samples bamlists/test47.names -o outputs/101/renamed-05.vcf.gz outputs/101/plink-05.vcf.gz
+```
+
+
