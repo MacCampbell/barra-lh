@@ -5,7 +5,7 @@
 # `bash $HOME/barra-lh/101.1-do.asso.sh $HOME/barra-lh/bamlists/test44.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-h/bamlists/test44.phenos`
 
 # Generalized so that 1/2 of bamlist is specified for -minInd
-# Adjusting to lines/1.25, that should be 80%
+# Going for 80% threshold with 5/4  
 
 bamlist=$1
 list=$2
@@ -13,7 +13,7 @@ phenos=$3
 
 #Setting minInd to 1/2 of inds
 lines=$(wc -l < "$bamlist")
-thresh=$((lines/1.25))
+thresh=$((lines*5/4))
 
 while read chrom; do
   echo "#!/bin/bash -l
@@ -22,6 +22,6 @@ while read chrom; do
   -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -r $chrom -out $chrom-asso \
   -bam $bamlist  > $chrom-asso.out 2> $chrom-asso.err " > $chrom-asso.sh
   
-sbatch -p high -t 24:00:00 --mem=32G --nodes=1 --cpus-per-task=12 $chrom-asso.sh
+sbatch -p med -t 24:00:00 --mem=32G --nodes=1 --cpus-per-task=12 $chrom-asso.sh
 
 done < $list

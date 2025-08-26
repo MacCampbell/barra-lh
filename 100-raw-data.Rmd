@@ -88,6 +88,8 @@ stats<-bind_rows(stats,stats2,stats3)
 #Maybe flip here
 m<-left_join(m,stats) %>% mutate(Pheno=ifelse(Phenotype=="SSS",0,1)) %>% mutate(Path=paste0("/home/maccamp/barra-lh/data/bams/",`library-id`,".sort.flt.bam"))
 median(na.omit(m$Coverage))
+
+write_csv(m, file="meta/m52.csv")
 ```
 
 ```{r}
@@ -121,12 +123,12 @@ srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angs
 -out outputs/100/44-ibs-90-Lcal01 > outputs/100/44-ibs-90-Lcal01.out 2> outputs/100/44-ibs-90-Lcal01.err &
 
 srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
--bam bamlists/test48.bamlist -r NC_066833.1 \
+-bam bamlists/test47.bamlist -r NC_066833.1 \
 -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
--minInd 40 -minMapQ 20 -minQ 20 -GL 2 -doGLF 2 \
+-minInd 42 -minMapQ 20 -minQ 20 -GL 2 -doGLF 2 \
 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doIBS 1 -doCounts 1 -doCov 1 -makeMatrix 1 -minMaf 0.05 \
--out outputs/100/48-ibs-90-Lcal01 > outputs/100/48-ibs-90-Lcal01.out 2> outputs/100/48-ibs-90-Lcal01.err &
+-out outputs/100/47-ibs-90-Lcal01 > outputs/100/47-ibs-90-Lcal01.out 2> outputs/100/47-ibs-90-Lcal01.err &
 
 #including chrom of interest
 srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \

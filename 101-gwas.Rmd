@@ -17,6 +17,9 @@ Chrom asso, execute in outputs/100
 
 ```{sh, eval=FALSE}
 bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test44.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-lh/bamlists/test44.pheno
+
+#Adding a few more individuals
+bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test47.bamlist $HOME/barra-lh/meta/lates-lgs.txt  $HOME/barra-lh/bamlists/test47.pheno
 ```
 
 There is a peak of association on NC_066856.1
