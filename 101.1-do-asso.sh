@@ -12,7 +12,7 @@ phenos=$3
 
 #Setting minInd to 1/2 of inds
 lines=$(wc -l < "$bamlist")
-thresh=$((lines*2))
+thresh=$((lines/2))
 
 while read chrom; do
   echo "#!/bin/bash -l
