@@ -175,6 +175,66 @@ NW_026115468.1	797	G	A	0.309998	20.575867
 NW_026118159.1	200805	G	C	0.430941	20.712739
 
 Nothing terribly interesting
+
+## Run it all as a single go to reduce sites
+
+```{sh, eval=FALSE}
+srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 42 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/101/combined-asso \
+ -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso.out 2> outputs/101/combined-asso.err &
+
+srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -model 2 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 42 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/101/combined-asso-model2 \
+ -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso-model2.out 2> outputs/101/combined-asso-model2.err &  
+```
+
+
+(base) maccamp@farm:~/barra-lh/outputs/101$ gunzip -c combined-asso.lrt0.gz | sort -k 6 -n | tail -n 20
+NC_066846.1	12843849	T	C	0.240878	16.872299
+NC_066853.1	19807669	G	C	0.488934	17.041938
+NC_066838.1	8953674	A	G	0.278272	17.224351
+NC_066856.1	2995063	T	C	0.463784	17.454824
+NC_066847.1	27783044	A	C	0.160413	17.533985
+NC_066856.1	2992188	G	A	0.499190	17.564454
+NC_066856.1	9155305	T	G	0.117705	17.579099
+NC_066847.1	13701299	T	G	0.403078	17.622087
+NC_066847.1	27782546	G	A	0.159766	17.645788
+NC_066855.1	2927708	A	G	0.156583	18.018325
+NC_066833.1	19962410	C	A	0.117364	18.307387
+NC_066848.1	4407354	G	A	0.445142	18.455663
+NC_066842.1	19925800	G	A	0.233628	19.368839
+NC_066856.1	16177028	G	A	0.343751	19.425269
+NC_066856.1	2992178	C	T	0.488105	19.501064
+NC_066856.1	2922339	G	A	0.299084	20.831616
+NC_066856.1	2996993	T	G	0.282777	21.096442
+NC_066856.1	2922305	C	T	0.298526	21.537108
+NC_066856.1	2922605	G	T	0.325443	21.758458
+NC_066856.1	3001384	A	C	0.478350	22.750913
+
+NC_066846.1	12843849	T	C	0.240878	16.872299
+NC_066853.1	19807669	G	C	0.488934	17.041938
+NC_066838.1	8953674	A	G	0.278272	17.224351
+NC_066856.1	2995063	T	C	0.463784	17.454824
+NC_066847.1	27783044	A	C	0.160413	17.533985
+NC_066856.1	2992188	G	A	0.499190	17.564454
+NC_066856.1	9155305	T	G	0.117705	17.579099
+NC_066847.1	13701299	T	G	0.403078	17.622087
+NC_066847.1	27782546	G	A	0.159766	17.645788
+NC_066855.1	2927708	A	G	0.156583	18.018325
+NC_066833.1	19962410	C	A	0.117364	18.307387
+NC_066848.1	4407354	G	A	0.445142	18.455663
+NC_066842.1	19925800	G	A	0.233628	19.368839
+NC_066856.1	16177028	G	A	0.343751	19.425269
+NC_066856.1	2992178	C	T	0.488105	19.501064
+NC_066856.1	2922339	G	A	0.299084	20.831616
+NC_066856.1	2996993	T	G	0.282777	21.096442
+NC_066856.1	2922305	C	T	0.298526	21.537108
+NC_066856.1	2922605	G	T	0.325443	21.758458
+NC_066856.1	3001384	A	C	0.478350	22.750913
 ## Calls
 
 calls
@@ -252,6 +312,10 @@ plot(x, option = "scores")
 ```{r}
 meta<-read_csv("meta/m52.csv") %>% filter(Coverage > 8)
 m<-meta
+
+meta %>% filter(Phenotype=="SSS") %>% select(specimen_id) %>% write_tsv("meta/SSS.names", col_names = FALSE)
+meta %>% filter(Phenotype=="SFF") %>% select(specimen_id) %>% write_tsv("meta/SFF.names", col_names = FALSE)
+
 ```
 
 ```{r}
@@ -302,3 +366,28 @@ Calculate error rates,
 ~21% incorrect classification 
 based on 5 snps
 
+Calculate allele frequencies in the different bits. I can use bcftools by selecting out the groups into separate .vcfs,
+bcftools view -S samplelist.txt input.vcf | bcftools +fill-tags -t MAF > outfile.vcf
+
+```{sh, eval=FALSE}
+bcftools view -S meta/SFF.names outputs/101/sub24.vcf | bcftools +fill-tags -- -t MAF | cut -f 1,2,4,5,8 | perl -pe 's/PR;|AC=|AN=|MAF=//g' | perl -pe 's/;/\t/g' | grep -v "#" > outputs/101/SFF.freqs
+
+bcftools view -S meta/SSS.names outputs/101/sub24.vcf | bcftools +fill-tags -- -t MAF | cut -f 1,2,4,5,8 | perl -pe 's/PR;|AC=|AN=|MAF=//g' | perl -pe 's/;/\t/g' | grep -v "#" > outputs/101/SSS.freqs
+```
+
+```{r}
+f1<-read_tsv("outputs/101/SFF.freqs", col_names = c("Chrom","Position","Ref","Alt","Nminor","Nmajor","MAF")) %>% mutate(Group="SFF")
+f2<-read_tsv("outputs/101/SSS.freqs", col_names = c("Chrom","Position","Ref","Alt","Nminor","Nmajor","MAF")) %>% mutate(Group="SSS")
+
+f3<-bind_rows(f1,f2) %>% filter(Position %in% tops$Position)
+f3$Position<-as.factor(f3$Position)
+```
+
+```{r}
+ggplot(f3) + 
+  geom_point(aes(x=Position, y=1-MAF, fill=Group), pch=21, size=3) +
+  ylim(0,1) +
+  theme_bw()
+```
+
+Note to check dominant style gwas
