@@ -106,7 +106,7 @@ m %>% filter(Coverage>8) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(),
 m %>% filter(Coverage>8) %>% select(Path) %>% write_tsv("bamlists/test47.bamlist", col_names = FALSE)
 m %>% filter(Coverage>8) %>% select(Pheno) %>% write_tsv("bamlists/test47.pheno", col_names = FALSE)
 m %>% filter(Coverage>8) %>% select(specimen_id) %>% write_tsv("bamlists/test47.names", col_names = FALSE)
-
+m %>% filter(Coverage>8) %>% mutate(AltPheno=ifelse(Phenotype=="SFF",0,1)) %>% write_tsv("bamlists/test47alt.pheno", col_names = FALSE)
 m47<-m %>% filter(Coverage>8)
 meta<-m47
 ```
