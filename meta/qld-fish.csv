@@ -1,25 +1,38 @@
-﻿library_id,specimen_id,sample_id,Group,Phenotype,Aligned,Dedup,Coverage,Path
-Mainstream1,Mainstream1,Mainstream1,Mainstream,UNK,168404232,149570272,30.9807,/home/maccamp/lates-wgs/data/hatcheries/Mainstream1.sort.flt.bam
-Mainstream2,Mainstream2,Mainstream2,Mainstream,UNK,182623700,164101320,33.9049,/home/maccamp/lates-wgs/data/hatcheries/Mainstream2.sort.flt.bam
-Mainstream3,Mainstream3,Mainstream3,Mainstream,UNK,203215006,183458792,37.8441,/home/maccamp/lates-wgs/data/hatcheries/Mainstream3.sort.flt.bam
-Mainstream4,Mainstream4,Mainstream4,Mainstream,UNK,158111751,142219025,29.4372,/home/maccamp/lates-wgs/data/hatcheries/Mainstream4.sort.flt.bam
-Mainstream5,Mainstream5,Mainstream5,Mainstream,UNK,205561290,186913334,38.5661,/home/maccamp/lates-wgs/data/hatcheries/Mainstream5.sort.flt.bam
-Mainstream6,Mainstream6,Mainstream6,Mainstream,UNK,273907451,232447693,49.0963,/home/maccamp/lates-wgs/data/taiwan/Mainstream6.sort.flt.bam
-Mainstream7,Mainstream7,Mainstream7,Mainstream,UNK,264202398,223927482,47.3556,/home/maccamp/lates-wgs/data/taiwan/Mainstream7.sort.flt.bam
-Mainstream8,Mainstream8,Mainstream8,Mainstream,UNK,270758821,232873303,49.3992,/home/maccamp/lates-wgs/data/taiwan/Mainstream8.sort.flt.bam
-Mainstream9,Mainstream9,Mainstream9,Mainstream,UNK,258503506,219343679,46.5654,/home/maccamp/lates-wgs/data/taiwan/Mainstream9.sort.flt.bam
-Mainstream10,Mainstream10,Mainstream10,Mainstream,UNK,278102584,233517641,48.587,/home/maccamp/lates-wgs/data/taiwan/Mainstream10.sort.flt.bam
-Mainstream11,Mainstream11,Mainstream11,Mainstream,UNK,263265248,222556527,46.4981,/home/maccamp/lates-wgs/data/taiwan/Mainstream11.sort.flt.bam
-Mainstream12,Mainstream12,Mainstream12,Mainstream,UNK,267868828,227555399,47.1854,/home/maccamp/lates-wgs/data/taiwan/Mainstream12.sort.flt.bam
-Fitz01,Fitz01,Fitz01,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz01.sort.flt.bam
-Fitz02,Fitz02,Fitz02,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz02.sort.flt.bam
-Fitz03,Fitz03,Fitz03,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz03.sort.flt.bam
-Fitz04,Fitz04,Fitz04,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz04.sort.flt.bam
-Fitz05,Fitz05,Fitz05,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz05.sort.flt.bam
-Fitz06,Fitz06,Fitz06,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz06.sort.flt.bam
-Fitz07,Fitz07,Fitz07,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz07.sort.flt.bam
-Fitz08,Fitz08,Fitz08,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz08.sort.flt.bam
-Fitz09,Fitz09,Fitz09,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz09.sort.flt.bam
-Fitz10,Fitz10,Fitz10,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz10.sort.flt.bam
-Fitz11,Fitz11,Fitz11,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz11.sort.flt.bam
-Fitz12,Fitz12,Fitz12,FitrzroyQLD,UNK,,,,/home/maccamp/lates-wgs/data/fitzroy/Fitz12.sort.flt.bam
+﻿library_id,specimen_id,Group,Phenotype,Aligned,Dedup,Coverage,Path
+Mainstream1,Mainstream1,Mainstream,UNK,168404232,149570272,30.9807,/home/maccamp/lates-wgs/data/hatcheries/Mainstream1.sort.flt.bam
+Mainstream2,Mainstream2,Mainstream,UNK,182623700,164101320,33.9049,/home/maccamp/lates-wgs/data/hatcheries/Mainstream2.sort.flt.bam
+Mainstream3,Mainstream3,Mainstream,UNK,203215006,183458792,37.8441,/home/maccamp/lates-wgs/data/hatcheries/Mainstream3.sort.flt.bam
+Mainstream4,Mainstream4,Mainstream,UNK,158111751,142219025,29.4372,/home/maccamp/lates-wgs/data/hatcheries/Mainstream4.sort.flt.bam
+Mainstream5,Mainstream5,Mainstream,UNK,205561290,186913334,38.5661,/home/maccamp/lates-wgs/data/hatcheries/Mainstream5.sort.flt.bam
+Mainstream6,Mainstream6,Mainstream,UNK,273907451,232447693,49.0963,/home/maccamp/lates-wgs/data/taiwan/Mainstream6.sort.flt.bam
+Mainstream7,Mainstream7,Mainstream,UNK,264202398,223927482,47.3556,/home/maccamp/lates-wgs/data/taiwan/Mainstream7.sort.flt.bam
+Mainstream8,Mainstream8,Mainstream,UNK,270758821,232873303,49.3992,/home/maccamp/lates-wgs/data/taiwan/Mainstream8.sort.flt.bam
+Mainstream9,Mainstream9,Mainstream,UNK,258503506,219343679,46.5654,/home/maccamp/lates-wgs/data/taiwan/Mainstream9.sort.flt.bam
+Mainstream10,Mainstream10,Mainstream,UNK,278102584,233517641,48.587,/home/maccamp/lates-wgs/data/taiwan/Mainstream10.sort.flt.bam
+Mainstream11,Mainstream11,Mainstream,UNK,263265248,222556527,46.4981,/home/maccamp/lates-wgs/data/taiwan/Mainstream11.sort.flt.bam
+Mainstream12,Mainstream12,Mainstream,UNK,267868828,227555399,47.1854,/home/maccamp/lates-wgs/data/taiwan/Mainstream12.sort.flt.bam
+Fitz01,Fitz01,FitrzroyQLD,UNK,214727062,197376262,43.1526,/home/maccamp/lates-wgs/data/fitzroy/Fitz01.sort.flt.bam
+Fitz02,Fitz02,FitrzroyQLD,UNK,210632957,193219087,42.2969,/home/maccamp/lates-wgs/data/fitzroy/Fitz02.sort.flt.bam
+Fitz03,Fitz03,FitrzroyQLD,UNK,184729485,170882159,37.2926,/home/maccamp/lates-wgs/data/fitzroy/Fitz03.sort.flt.bam
+Fitz04,Fitz04,FitrzroyQLD,UNK,171859885,159473337,34.8281,/home/maccamp/lates-wgs/data/fitzroy/Fitz04.sort.flt.bam
+Fitz05,Fitz05,FitrzroyQLD,UNK,207408151,190022508,41.5087,/home/maccamp/lates-wgs/data/fitzroy/Fitz05.sort.flt.bam
+Fitz06,Fitz06,FitrzroyQLD,UNK,190952857,175877495,38.4533,/home/maccamp/lates-wgs/data/fitzroy/Fitz06.sort.flt.bam
+Fitz07,Fitz07,FitrzroyQLD,UNK,201784406,184807354,40.44,/home/maccamp/lates-wgs/data/fitzroy/Fitz07.sort.flt.bam
+Fitz08,Fitz08,FitrzroyQLD,UNK,218928717,201067584,43.9234,/home/maccamp/lates-wgs/data/fitzroy/Fitz08.sort.flt.bam
+Fitz09,Fitz09,FitrzroyQLD,UNK,212292704,193840062,42.342,/home/maccamp/lates-wgs/data/fitzroy/Fitz09.sort.flt.bam
+Fitz10,Fitz10,FitrzroyQLD,UNK,178106206,164999646,35.3562,/home/maccamp/lates-wgs/data/fitzroy/Fitz10.sort.flt.bam
+Fitz11,Fitz11,FitrzroyQLD,UNK,209984474,192614333,42.0989,/home/maccamp/lates-wgs/data/fitzroy/Fitz11.sort.flt.bam
+Fitz12,Fitz12,FitrzroyQLD,UNK,193808212,179158375,38.6273,/home/maccamp/lates-wgs/data/fitzroy/Fitz12.sort.flt.bam
+Daly01,Daly01,Daly River,UNK,316492070,271334403,58.7496,/home/maccamp/lates-wgs/data/daly/Daly01.sort.flt.bam
+Daly02,Daly02,Daly River,UNK,326046177,283926139,60.2108,/home/maccamp/lates-wgs/data/daly/Daly02.sort.flt.bam
+Daly03,Daly03,Daly River,UNK,250931941,216745151,47.0122,/home/maccamp/lates-wgs/data/daly/Daly03.sort.flt.bam
+Daly04,Daly04,Daly River,UNK,228200523,200254294,43.2608,/home/maccamp/lates-wgs/data/daly/Daly04.sort.flt.bam
+Daly05,Daly05,Daly River,UNK,358110468,308080850,66.6556,/home/maccamp/lates-wgs/data/daly/Daly05.sort.flt.bam
+Daly06,Daly06,Daly River,UNK,288183066,246600489,53.1609,/home/maccamp/lates-wgs/data/daly/Daly06.sort.flt.bam
+Daly07,Daly07,Daly River,UNK,302850614,258326860,55.7428,/home/maccamp/lates-wgs/data/daly/Daly07.sort.flt.bam
+Daly08,Daly08,Daly River,UNK,277003928,240831949,52.1401,/home/maccamp/lates-wgs/data/daly/Daly08.sort.flt.bam
+Roper02,Roper02,Roper River,UNK,305214628,237233317,49.1359,/home/maccamp/lates-wgs/data/daly/Roper02.sort.flt.bam
+Roper07,Roper07,Roper River,UNK,240383448,192310744,39.667,/home/maccamp/lates-wgs/data/daly/Roper07.sort.flt.bam
+Roper08,Roper08,Roper River,UNK,218701103,172576592,35.7122,/home/maccamp/lates-wgs/data/daly/Roper08.sort.flt.bam
+Roper09,Roper09,Roper River,UNK,209993253,163360453,33.7983,/home/maccamp/lates-wgs/data/daly/Roper09.sort.flt.bam
+Roper10,Roper10,Roper River,UNK,220737088,177538875,36.7153,/home/maccamp/lates-wgs/data/daly/Roper10.sort.flt.bam

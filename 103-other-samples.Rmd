@@ -39,3 +39,32 @@ QLD in
 
 (1) Generate single chrom PCA
 (2) Call snps and see about region of interest?
+
+
+```{r}
+qld<-read_csv("meta/qld-fish.csv") 
+qld
+```
+
+
+```{r}
+m84<-read_csv("~/github/barra-lh/meta/m52.csv") %>% mutate(Group="Burnett") %>% bind_rows(qld) %>% filter(Coverage > 8)
+
+ggplot(m84) +
+  geom_histogram(aes(x=Coverage, fill=Group))
+```
+```{r}
+m84 %>% select(Path) %>% write_tsv("~/github/barra-lh/bamlists/84.bamlist", col_names = FALSE)
+m84 %>% select(Pheno) %>% write_tsv("~/github/barra-lh/bamlists/84.pheno", col_names = FALSE)
+m84 %>% select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/84.names", col_names = FALSE)
+```
+
+```{sh, eval=FALSE}
+srun -p high -t 10:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
+-bam bamlists/84.bamlist -r NC_066833.1 \
+-ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 76 -minMapQ 20 -minQ 20 -GL 2 -doGLF 2 \
+-doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
+-doIBS 1 -doCounts 1 -doCov 1 -makeMatrix 1 -minMaf 0.05 \
+-out outputs/103/84-ibs-90-Lcal01 > outputs/103/84-ibs-90-Lcal01.out 2> outputs/103/84-ibs-90-Lcal01.err &
+```

@@ -11,6 +11,9 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```{r}
 library(tidyverse)
 library(RColorBrewer)
+library(pcadapt)
+library(pheatmap)
+library(ggplotify)
 ```
 
 Chrom asso, execute in outputs/100
@@ -97,18 +100,26 @@ ggsave("outputs/101/SSS-SFF-44-inds.jpeg")
 Find peaks
 
 ```{r}
-dd %>% filter(log10p > 5)
+tops<-dd %>% filter(log10p > 5.3)
+tops
 ```
 
 ```{r}
 list<-list.files(path = "outputs/101", pattern="lrt0.gz", full.names = TRUE)
-lrts<-lapply(list, read_tsv) %>% bind_rows() %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>%
-  filter(log10p > 2)
+lrts<-lapply(list, read_tsv) %>% bind_rows() %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0)
+
+lrts<-lrts %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(adjpchrom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH"))
+lrts  %>% arrange(BHfdrchrom) 
 ```
 
 
 ```{r}
-dd <- lrts %>% filter(log10p !=Inf) %>% mutate(Index=1:n())
+dd <- lrts %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
 
 chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
   select(Chromosome,Start,Stop) %>% unique() %>% 
@@ -123,8 +134,8 @@ mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
 ggplot(dd) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
   geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  #geom_hline(yintercept = 6, lty=2, alpha=0.6) +
   geom_hline(yintercept = 5, lty=2, alpha=0.6) +
-  geom_hline(yintercept = 8, lty=2, alpha=0.6) +
   theme_bw() +
   scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
   theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
@@ -137,7 +148,7 @@ ggplot(dd) +
   ggtitle("SSS vs SFF GWAS") +
   theme(plot.title = element_text(hjust=0.5) )
 
-ggsave("outputs/101/SSS-SFF-44-inds-all-chroms.jpeg")
+ggsave("outputs/101/SSS-SFF-47-inds-all-chroms.jpeg")
 ```
 
 
@@ -145,15 +156,26 @@ ggsave("outputs/101/SSS-SFF-44-inds-all-chroms.jpeg")
 
 
 also, the small contigs...
-
-#Adding a few more individuals
-
 in outputs/101/small
 
 ```{sh, eval=FALSE}
 bash $HOME/barra-lh/101.1-do-asso.sh $HOME/barra-lh/bamlists/test47.bamlist $HOME/barra-lh/genome/small-contigs.tsv  $HOME/barra-lh/bamlists/test47.pheno
 ```
 
+NW_026117030.1	12402	T	C	0.214072	16.512337
+NW_026117610.1	17588	T	A	0.106385	16.544752
+NW_026116102.1	21605	C	A	0.266668	16.568624
+NW_026116531.1	7909	T	C	0.281637	16.578117
+NW_026117350.1	26206	A	G	0.240335	16.649962
+NW_026116102.1	21601	A	T	0.270313	16.845093
+NW_026117599.1	25739	A	G	0.228391	16.867418
+NW_026116102.1	21606	A	G	0.258299	16.940919
+NW_026115445.1	13807	T	G	0.331168	18.033724
+NW_026115468.1	797	G	A	0.309998	20.575867
+NW_026118159.1	200805	G	C	0.430941	20.712739
+
+Nothing terribly interesting
+## Calls
 
 calls
 Calls with GLF, only one chrom
@@ -181,4 +203,102 @@ module load bcftools
 bcftools reheader --samples bamlists/test47.names -o outputs/101/renamed-05.vcf.gz outputs/101/plink-05.vcf.gz
 ```
 
+Locally filter to area of interest
+
+```{sh, eval=FALSE}
+
+bcftools view -Ov -r NC_066856.1:2922305-3001384 outputs/101/renamed-05.vcf.gz  > outputs/101/sub24.vcf
+
+```
+
+```{r}
+path_to_file <- "outputs/101/renamed-05.vcf.gz"
+path_to_file <- "outputs/101/sub24.vcf"
+
+filename <- read.pcadapt(path_to_file, type = "vcf")
+```
+
+
+
+_1_ choose a K   
+
+```{r}
+x <- pcadapt(input = filename, K = 20) 
+```
+
+```{r}
+var<-round(x$singular.values^2*100,2)
+var
+```
+
+```{r}
+#plot(x, option = "screeplot")
+panela<-plot(x, option = "screeplot", K = 10) + ggtitle("A") +
+  theme(plot.title = element_text(size=14, face="bold")) +
+  theme(panel.grid = element_blank(), panel.background = element_blank()) +
+  scale_x_continuous(breaks=seq(1,10,1), labels=seq(1,10,1)) +
+  ylab("Proption of Explained Variance\n") +
+  xlab("\nPrincipal Component") +
+  theme(axis.title=element_text(size=12))
+panela
+```
+
+
+```{r}
+plot(x, option = "scores")
+```
+
+
+```{r}
+meta<-read_csv("meta/m52.csv") %>% filter(Coverage > 8)
+m<-meta
+```
+
+```{r}
+pcadata<-x$scores[,1:5] %>% as_tibble()
+pcadata<-pcadata %>% bind_cols(m)
+
+```
+
+```{r}
+ggplot(pcadata) +
+  geom_point(aes(x=V1, y=V2, fill=Phenotype), pch=21, alpha=0.95) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  theme(panel.grid = element_blank()) +
+  xlab("PC 1") +
+  ylab("PC 2") 
+```
+
+```{r}
+ddf<-read_tsv("outputs/101/snps-wgs-05-glf-chrom24.geno.gz", col_names = c("FALSE"))  %>% select(-X50)
+ddf[ddf==-1]<-NA
+ddf2<-ddf %>% filter(X2 %in% tops$Position) 
+m<-ddf2 %>% select(-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+annot$Phenotype<-meta$Phenotype
+annot
+annot_colors=list(Phenotype=c(SFF="#F0978D",SSS="#63D7DE"))
+
+```
+
+```{r}
+as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors,
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6)) +
+  ggtitle("Heatmap of associated barra variants on Lca26\n") + 
+  theme(plot.title = element_text(hjust=0.5))
+
+ggsave("outputs/101/top-associated-variants.jpeg", width=12, height=6)
+```
+
+Calculate error rates,
+16 SFF correctly classified
+21 SSS correctly classified
+
+4 SSS incorrectly classified
+6 SFF incorrectly classified
+
+~79% correct classification
+~21% incorrect classification 
+based on 5 snps
 

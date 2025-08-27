@@ -185,7 +185,7 @@ pc12<-ggplot(covs) +
   geom_point(aes(x=V1, y=V2, fill=Phenotype), pch=21, alpha=0.75, cex=2) +
   xlab(paste("PC1", " ", round((100*var[1]),2), "%", sep = "")) +
   ylab(paste("PC2", " ", round((100*var[2]),2), "%", sep = "")) +
-  geom_text_repel(data=covs %>% filter(V1 < -0.2), aes(x=V1, y=V2, label=specimen_id)) +
+  geom_text_repel(data=covs %>% filter(V1  > 0.2), aes(x=V1, y=V2, label=specimen_id)) +
   scale_fill_manual(values=c("red","blue")) +
   theme_bw() +
   theme(panel.grid=element_blank()) +
