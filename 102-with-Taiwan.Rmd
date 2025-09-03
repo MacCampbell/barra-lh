@@ -67,3 +67,36 @@ ggplot(lrts) + geom_point(aes(x=Position, y=log10p, color=log10p), alpha=0.75, c
 
 ggsave("outputs/102/qld-taiwan-gwas.jpeg", width=14, height=14)
 ```
+
+```{sh, eval=FALSE}
+srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/test56.pheno -GL 1 -minInd 53 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/102/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/test56.bamlist  > outputs/102/combined-asso.out 2> outputs/102/combined-asso.err &
+```
+
+(base) maccamp@farm:~/barra-lh/outputs/102$ gunzip -c combined-asso-95.lrt0.gz | sort -k 6 -n | tail -n 20
+NC_066837.1	14788950	T	C	0.216425	32.348688
+NC_066844.1	18034678	G	A	0.206925	32.360021
+NC_066838.1	5455954	C	T	0.208294	32.484738
+NC_066840.1	11312121	G	C	0.291183	32.577334
+NC_066842.1	4549787	C	T	0.259221	33.013734
+NC_066838.1	925208	C	T	0.215869	33.269888
+NC_066841.1	2883426	A	C	0.211894	33.293427
+NC_066847.1	11288111	A	C	0.214467	33.443149
+NC_066836.1	9542895	T	C	0.382251	33.444858
+NC_066837.1	8005956	A	C	0.214763	33.515043
+NC_066835.1	15386098	A	G	0.214501	33.569870
+NC_066844.1	1112254	G	A	0.214399	33.598819
+NC_066833.1	21415182	A	G	0.221152	35.034728
+NC_066837.1	22997423	A	G	0.222247	35.065321
+NC_066844.1	24749782	T	C	0.223978	35.143071
+NC_066833.1	21415037	T	G	0.223059	35.297123
+NC_066844.1	9205129	A	C	0.223257	35.309348
+NC_066846.1	225392	G	T	0.276787	36.445965
+NC_066837.1	22997710	A	C	0.239604	38.403287
+NC_066856.1	2922339	G	A	0.412678	39.381366
+
+
+So the highest SNP is implicated, but need to provide covariance matrix as a covariate to correct.

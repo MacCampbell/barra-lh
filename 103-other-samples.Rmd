@@ -4,6 +4,8 @@ output: html_document
 date: "2025-08-26"
 ---
 
+Meeting code: mjgqh7m
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
@@ -145,6 +147,7 @@ srun -t 5-24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-ta
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/103/snps-wgs-05-glf.out 2> outputs/103/snps-wgs-05-glf.err &
 ```
 
+1130415
 
 ```{sh, eval=FALSE}
 plink --tped snps-wgs-05-glf.tped --tfam snps-wgs-05-glf.tfam  --out plink-binary-05 --recode --allow-extra-chr --noweb
@@ -155,13 +158,13 @@ tabix plink-05.vcf.gz
 #renaming vcf bcftools/1.13
 module load bcftools
 
-bcftools reheader --samples bamlists/test47.names -o outputs/101/renamed-05.vcf.gz outputs/101/plink-05.vcf.gz
+bcftools reheader --samples bamlists/84.names -o outputs/103/renamed-05.vcf.gz outputs/103/plink-05.vcf.gz
 
 
-bcftools +fill-tags outputs/101/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/101/pruned-05.vcf
+bcftools +fill-tags outputs/103/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/103/pruned-05.vcf
 
-bgzip outputs/101/pruned-05.vcf
-tabix outputs/101/pruned-05.vcf.gz
+bgzip outputs/103/pruned-05.vcf
+tabix outputs/103/pruned-05.vcf.gz
 ```
 
 
@@ -169,10 +172,29 @@ Locally filter to area of interest
 
 ```{sh, eval=FALSE}
 bcftools view -Ov -r NC_066856.1:2922305-3001384 outputs/103/renamed-05.vcf.gz  > outputs/103/sub24.vcf
+
+bcftools view -Ov -r NC_066856.1:2843226-3080463 renamed-05.vcf.gz  > sub24.vcf
+#calc ld
+plink --vcf sub24.vcf --r2 inter-chr --ld-window-r2 0.1 --out sub24.ldf --allow-extra-chr --double-id
 ```
 
 ```{r}
-path_to_file <- "outputs/101/pruned-05.vcf.gz"
+lc<-read.delim("outputs/103/sub24.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.3)
+
+  ggplot(lc) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle("RoSA Lca24 linkage disequilibrium plot")+
+  theme_bw() +
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5)) +
+  xlab("\nSNP A") +
+  ylab("SNP B\n")
+  
+ggsave("outputs/103/rosa-ld-plot.jpeg")
+```
+
+```{r}
+path_to_file <- "outputs/103/pruned-05.vcf.gz"
 
 filename <- read.pcadapt(path_to_file, type = "vcf")
 ```
@@ -236,24 +258,26 @@ Calculate allele frequencies in the different bits. I can use bcftools by select
 bcftools view -S samplelist.txt input.vcf | bcftools +fill-tags -t MAF > outfile.vcf
 
 ```{r}
-ddf<-read_tsv("outputs/101/snps-wgs-05-glf-chrom24.geno.gz", col_names = c("FALSE"))  %>% select(-X50)
+ddf<-read_tsv("outputs/103/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% select(-X87) %>% filter(`FALSE`=="NC_066856.1")
 ddf[ddf==-1]<-NA
 ddf2<-ddf %>% filter(X2 %in% tops$Position) 
 m<-ddf2 %>% select(-`FALSE`, -X2) %>% as.matrix()
 annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
 annot$Phenotype<-meta$Phenotype
 annot
-annot_colors=list(Phenotype=c(SFF="#F0978D",SSS="#63D7DE"))
+annot_colors=list(Phenotype=c(SFF="#F0978D",SSS="#63D7DE",UNK="grey50"))
 
 ```
 
 ```{r}
 as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors,
                    labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6)) +
-  ggtitle("Heatmap of associated barra variants on Lca26\n") + 
+  ggtitle("Heatmap of associated barra variants on Lca24\n") + 
   theme(plot.title = element_text(hjust=0.5))
 
-ggsave("outputs/101/top-associated-variants.jpeg", width=12, height=6)
+ggsave("outputs/103/top-associated-variants-NT-QLD.jpeg", width=12, height=6)
+ggsave("outputs/103/top-associated-variants-NT-QLD.pdf", width=12, height=6)
+
 ```
 
 

@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```{r}
 library(tidyverse)
 library(RColorBrewer)
+library(snpR)
 library(pcadapt)
 library(pheatmap)
 library(ggplotify)
@@ -112,7 +113,7 @@ lrts<-lapply(list, read_tsv) %>% bind_rows() %>% mutate(log10p = -log10(dchisq(L
 lrts<-lrts %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
   mutate(BHfdr = p.adjust(p, method = "BH")) %>%
   group_by(Chromosome) %>%
-  mutate(adjpchrom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(bonferchrom = p.adjust(p, method = "bonferroni")) %>%
   mutate(BHfdrchrom = p.adjust(p, method = "BH"))
 lrts  %>% arrange(BHfdrchrom) 
 ```
@@ -178,6 +179,9 @@ Nothing terribly interesting
 
 ## Run it all as a single go to reduce sites
 
+Can up the 42/47 to 45/57?
+posterior probability?
+
 ```{sh, eval=FALSE}
 srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
  -doAsso 1 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 42 -minMaf 0.10 \
@@ -186,10 +190,23 @@ srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task
  -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso.out 2> outputs/101/combined-asso.err &
 
 srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 45 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/101/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso.out 2> outputs/101/combined-asso.err &
+
+
+srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
  -doAsso 1 -model 2 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 42 -minMaf 0.10 \
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/101/combined-asso-model2 \
  -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso-model2.out 2> outputs/101/combined-asso-model2.err &  
+ 
+ srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/test47alt.pheno -GL 1 -minInd 42 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/101/combined-asso-alt \
+ -bam $HOME/barra-lh/bamlists/test47.bamlist  > outputs/101/combined-asso-alt.out 2> outputs/101/combined-asso-alt.err &
 ```
 
 
@@ -215,6 +232,8 @@ NC_066856.1	2922305	C	T	0.298526	21.537108
 NC_066856.1	2922605	G	T	0.325443	21.758458
 NC_066856.1	3001384	A	C	0.478350	22.750913
 
+
+
 NC_066846.1	12843849	T	C	0.240878	16.872299
 NC_066853.1	19807669	G	C	0.488934	17.041938
 NC_066838.1	8953674	A	G	0.278272	17.224351
@@ -235,6 +254,66 @@ NC_066856.1	2996993	T	G	0.282777	21.096442
 NC_066856.1	2922305	C	T	0.298526	21.537108
 NC_066856.1	2922605	G	T	0.325443	21.758458
 NC_066856.1	3001384	A	C	0.478350	22.750913
+
+Read in and see if this changed anything, cases and controls
+(base) maccamp@farm:~/barra-lh/outputs/101$ gunzip -c combined-asso-alt.lrt0.gz | sort -k 6 -n | tail
+NC_066833.1	19962410	C	A	0.117364	18.307387
+NC_066848.1	4407354	G	A	0.445142	18.455663
+NC_066842.1	19925800	G	A	0.233628	19.368839
+NC_066856.1	16177028	G	A	0.343751	19.425269
+NC_066856.1	2992178	C	T	0.488105	19.501064
+NC_066856.1	2922339	G	A	0.299084	20.831616
+NC_066856.1	2996993	T	G	0.282777	21.096442
+NC_066856.1	2922305	C	T	0.298526	21.537108
+NC_066856.1	2922605	G	T	0.325443	21.758458
+NC_066856.1	3001384	A	C	0.478350	22.750913
+
+
+```{r}
+lrt<- read_tsv("outputs/101/combined/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH"))
+lrt  %>% arrange(BHfdrchrom)  %>% select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom)
+```
+
+
+from about 766K to 741K snps with 95% threshold. 
+```{r}
+dd <- lrt %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
+
+chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  select(Chromosome,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+outliers <- dd %>% filter(log10p >=10)
+#Make enough colors
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+
+ggplot(dd) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  #geom_hline(yintercept = 6, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 5, lty=2, alpha=0.6) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("-log10(p)") +
+  xlab("Chromosome") +
+  ggtitle("SSS vs SFF GWAS") +
+  theme(plot.title = element_text(hjust=0.5) )
+
+ggsave("outputs/101/SSS-SFF-47-inds-all-chroms-filtered.jpeg")
+```
+
 ## Calls
 
 calls
@@ -263,14 +342,45 @@ module load bcftools
 bcftools reheader --samples bamlists/test47.names -o outputs/101/renamed-05.vcf.gz outputs/101/plink-05.vcf.gz
 ```
 
+calc mising
+
+```{sh, eval=FALSE}
+paste \
+<(bcftools query -f '[%SAMPLE\t]\n' renamed-05.vcf.gz | head -1 | tr '\t' '\n') \
+<(bcftools query -f '[%GT\t]\n' renamed-05.vcf.gz | awk -v OFS="\t" '{for (i=1;i<=NF;i++) if ($i == "./.") sum[i]+=1 } END {for (i in sum) print i, sum[i] / NR }' | sort -k1,1n | cut -f 2) > missingness.stats
+
+```
 Locally filter to area of interest
 
 ```{sh, eval=FALSE}
 
 bcftools view -Ov -r NC_066856.1:2922305-3001384 outputs/101/renamed-05.vcf.gz  > outputs/101/sub24.vcf
+bcftools view -Ov -r NC_066856.1:2843226-3080463 outputs/101/renamed-05.vcf.gz  > outputs/101/sub24-expanded.vcf
 
 ```
 
+
+
+```{sh, eval=FALSE}
+
+#calc ld
+plink --vcf sub24-expanded.vcf --r2 inter-chr --ld-window-r2 0.1 --out sub24.ldf --allow-extra-chr --double-id
+```
+
+```{r}
+lc<-read.delim("outputs/101/sub24.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.3)
+
+  ggplot(lc) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle("RoSA Lca26 linkage disequilibrium plot")+
+  theme_bw() +
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5)) +
+  xlab("\nSNP A") +
+  ylab("SNP B\n")
+  
+ggsave("outputs/101/rosa-ld-plot.jpeg")
+```
 ```{r}
 path_to_file <- "outputs/101/renamed-05.vcf.gz"
 path_to_file <- "outputs/101/sub24.vcf"
@@ -353,6 +463,8 @@ as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_
   theme(plot.title = element_text(hjust=0.5))
 
 ggsave("outputs/101/top-associated-variants.jpeg", width=12, height=6)
+ggsave("outputs/101/top-associated-variants.pdf", width=12, height=6)
+
 ```
 
 Calculate error rates,
@@ -391,3 +503,13 @@ ggplot(f3) +
 ```
 
 Note to check dominant style gwas
+
+## Thin snps
+every nth,
+every nth+10
+
+ld-linked ?
+
+phase and pull out haplotypes
+
+check omia
