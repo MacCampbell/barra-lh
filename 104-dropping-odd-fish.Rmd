@@ -34,7 +34,7 @@ m %>% filter(Coverage>8) %>% select(NewPheno) %>% write_tsv("bamlists/44.pheno",
 m %>% filter(Coverage>8) %>% select(specimen_id) %>% write_tsv("bamlists/44.names", col_names = FALSE)
 m44<-m %>% filter(Coverage>8)
 meta<-m44
-
+m44 %>% write_csv("meta/meta44.csv")
 ```
 
 ```{r}
@@ -43,31 +43,101 @@ ggplot(m44) +
   ylab("Count\n") +
   xlab("\nCoverage after Filtering") +
   theme_bw() +
-  scale_fill_manual(values=c("red","blue"))
+  scale_fill_manual(values=c("red","blue")) +
+  xlim(0,max(m44$Coverage+1))
 ggsave("outputs/104/coverage.jpeg")
 ```
 
 
 # Run GWAS and call SNPs
 
-```{r}
+```{sh, eval=FALSE}
 srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
- -doAsso 1 -yBin $HOME/barra-lh/bamlists/test47.pheno -GL 1 -minInd 42 -minMaf 0.10 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/44.pheno -GL 1 -minInd 42 -minMaf 0.10 \
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/104/combined-asso-95 \
  -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/104/combined-asso.out 2> outputs/104/combined-asso.err &
+ 
+ #100% threshold
+ srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/44.pheno -GL 1 -minInd 44 -minMaf 0.15 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/104/combined-asso-100 \
+ -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/104/combined-asso.out 2> outputs/104/combined-asso.err &
+```
+
+
+
+GWAS
+
+
+```{r}
+lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH"))
+lrt  %>% arrange(BHfdrchrom)  %>% select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
+```
+
+739,776 Positions
+
+Define outliers
+
+
+
+
+```{r}
+dd <- lrt %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
+
+chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  select(Chromosome,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+# outliers
+outliers <- dd %>% filter(BHfdrchrom< .05) 
+
+
+#Make enough colors
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+
+ggplot(dd) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  #geom_hline(yintercept = 6, lty=2, alpha=0.6) +
+  #geom_hline(yintercept = 5, lty=2, alpha=0.6) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("-log10(p)") +
+  xlab("Chromosome") +
+  ggtitle("SSS vs SFF GWAS") +
+  theme(plot.title = element_text(hjust=0.5) )
+
+ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered.jpeg")
+```
+
+```{r}
+outliers %>% select(Chromosome, Position, Frequency, Major, Minor, p, BHfdrchrom) %>% arrange(BHfdrchrom)
 ```
 
 
 ```{sh, eval=FALSE}
 srun -t 4-24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
--minInd 42 -bam bamlists/42.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 42 -bam bamlists/44.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
 -rf meta/lates-lgs.txt -out outputs/104/snps-wgs-05-glf  \
 -minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/104/snps-wgs-05-glf.out 2> outputs/104/snps-wgs-05-glf.err &
 ```
 
-1130415
+
 
 ```{sh, eval=FALSE}
 plink --tped snps-wgs-05-glf.tped --tfam snps-wgs-05-glf.tfam  --out plink-binary-05 --recode --allow-extra-chr --noweb
@@ -78,11 +148,137 @@ tabix plink-05.vcf.gz
 #renaming vcf bcftools/1.13
 module load bcftools
 
-bcftools reheader --samples bamlists/84.names -o outputs/103/renamed-05.vcf.gz outputs/103/plink-05.vcf.gz
+bcftools reheader --samples bamlists/44.names -o outputs/104/renamed-05.vcf.gz outputs/104/plink-05.vcf.gz
 
 
-bcftools +fill-tags outputs/103/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/103/pruned-05.vcf
+bcftools +fill-tags outputs/104/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/104/pruned-05.vcf
 
-bgzip outputs/103/pruned-05.vcf
-tabix outputs/103/pruned-05.vcf.gz
+bcftools +fill-tags outputs/104/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode maxAF  > outputs/104/pruned-10.vcf
+
+
+bgzip outputs/104/pruned-05.vcf
+tabix outputs/104/pruned-05.vcf.gz
+
+bgzip outputs/104/pruned-10.vcf
+tabix outputs/104/pruned-10.vcf.gz
 ```
+
+
+
+## Outlier clustering
+
+
+```{r}
+ddf<-read_tsv("outputs/104/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% select(-X47) %>% filter(`FALSE`=="NC_066856.1")
+ddf[ddf==-1]<-NA
+ddf2<-ddf %>% filter(X2 %in% outliers$Position) 
+m<-ddf2 %>% select(-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+annot$Phenotype<-meta$Phenotype
+annot
+annot_colors=list(Phenotype=c(SFF="#F0978D",SSS="#63D7DE",UNK="grey50"))
+
+```
+
+```{r}
+as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors,
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6)) +
+  ggtitle("Heatmap of associated barra variants on Lca24\n") + 
+  theme(plot.title = element_text(hjust=0.5))
+
+ggsave("outputs/104/top-associated-variants.jpeg", width=12, height=6)
+ggsave("outputs/104/top-associated-variants.pdf", width=12, height=6)
+
+```
+
+
+23 SSS 
+21 SFF
+
+Misclassified SS:  
+SFLc0683, SFLc0398
+
+Misclassified SFF:
+SFLc0054, SFLc0096, SFLc0714, 
+SFLc0403, SFLc0356, SFLc0282
+
+86% correct assignment
+
+
+## PCA
+
+
+```{r}
+path_to_file <- "outputs/104/pruned-10.vcf.gz"
+
+filename <- read.pcadapt(path_to_file, type = "vcf")
+```
+
+
+10,457 maf05
+10,183 maf10
+
+_1_ choose a K   
+
+```{r}
+x <- pcadapt(input = filename, K = 20) 
+```
+
+```{r}
+var<-round(x$singular.values^2*100,2)
+var
+```
+
+```{r}
+#plot(x, option = "screeplot")
+panela<-plot(x, option = "screeplot", K = 10) + ggtitle("A") +
+  theme(plot.title = element_text(size=14, face="bold")) +
+  theme(panel.grid = element_blank(), panel.background = element_blank()) +
+  scale_x_continuous(breaks=seq(1,10,1), labels=seq(1,10,1)) +
+  ylab("Proption of Explained Variance\n") +
+  xlab("\nPrincipal Component") +
+  theme(axis.title=element_text(size=12))
+panela
+```
+
+
+```{r}
+plot(x, option = "scores")
+```
+
+
+```{r}
+meta<-m44
+m<-meta
+```
+
+```{r}
+pcadata<-x$scores[,1:5] %>% as_tibble()
+pcadata<-pcadata %>% bind_cols(m)
+
+```
+
+```{r}
+ggplot(pcadata) +
+  geom_point(aes(x=V1, y=V2, fill=NewPhenotype), pch=21, alpha=0.95) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  theme(panel.grid = element_blank()) +
+  xlab("PC 1") +
+  ylab("PC 2") +
+  scale_fill_viridis_d(option="H")
+```
+
+```{r}
+pcadata %>% arrange(-V1)
+pcadata %>% arrange(-V2)
+```
+
+
+
+Misclassified SS:  
+SFLc0683, SFLc0398
+
+Misclassified SFF:
+SFLc0054, SFLc0096, SFLc0714, 
+SFLc0403, SFLc0356, SFLc0282
