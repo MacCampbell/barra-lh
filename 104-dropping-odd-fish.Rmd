@@ -8,6 +8,13 @@ date: "2025-09-03"
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
 ```
 
+```{r}
+library(tidyverse)
+library(pcadapt)
+library(RColorBrewer)
+library(snpR)
+```
+
 Dropping three odd fish and changing Lc0427 to SFF
 
 
@@ -28,10 +35,10 @@ m  %>% filter(specimen_id=="SFLc0427")
 
 
 ```{r}
-m %>% filter(Coverage>8) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage))
-m %>% filter(Coverage>8) %>% select(Path) %>% write_tsv("bamlists/44.bamlist", col_names = FALSE)
-m %>% filter(Coverage>8) %>% select(NewPheno) %>% write_tsv("bamlists/44.pheno", col_names = FALSE)
-m %>% filter(Coverage>8) %>% select(specimen_id) %>% write_tsv("bamlists/44.names", col_names = FALSE)
+m %>% filter(Coverage>8) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage), Min=min(Coverage), Max=max(Coverage))
+m %>% filter(Coverage>8) %>% dplyr::select(Path) %>% write_tsv("bamlists/44.bamlist", col_names = FALSE)
+m %>% filter(Coverage>8) %>% dplyr::select(NewPheno) %>% write_tsv("bamlists/44.pheno", col_names = FALSE)
+m %>% filter(Coverage>8) %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/44.names", col_names = FALSE)
 m44<-m %>% filter(Coverage>8)
 meta<-m44
 m44 %>% write_csv("meta/meta44.csv")
@@ -70,6 +77,10 @@ srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task
 
 GWAS
 
+```{r}
+names<-read_tsv("meta/lates-lgs-named.txt")
+names
+```
 
 ```{r}
 lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
@@ -77,8 +88,8 @@ lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log1
   mutate(BHfdr = p.adjust(p, method = "BH")) %>%
   group_by(Chromosome) %>%
   mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
-  mutate(BHfdrchrom = p.adjust(p, method = "BH"))
-lrt  %>% arrange(BHfdrchrom)  %>% select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
+  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+lrt  %>% arrange(BHfdrchrom)  %>% dplyr::select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
 ```
 
 739,776 Positions
@@ -86,18 +97,22 @@ lrt  %>% arrange(BHfdrchrom)  %>% select(Chromosome, Position, p, bonfer, BHfdr,
 Define outliers
 
 
-
+```{r}
+-log10(.05/739776)
+-log10(.1/739776)
+-log10(.05/40000)
+```
 
 ```{r}
 dd <- lrt %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
 
 chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
-  select(Chromosome,Start,Stop) %>% unique() %>% 
+  dplyr::select(Chromosome,Chrom,Start,Stop) %>% unique() %>% 
   mutate(Position=round((Start+Stop)/2))
 
 # outliers
 outliers <- dd %>% filter(BHfdrchrom< .05) 
-
+write_csv(outliers, "outputs/104/outliers.csv")
 
 #Make enough colors
 nb.cols <- nrow(chroms)
@@ -107,7 +122,7 @@ mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
 ggplot(dd) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
   geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
-  #geom_hline(yintercept = 6, lty=2, alpha=0.6) +
+  geom_hline(yintercept = 5.9, lty=2, alpha=0.6) +
   #geom_hline(yintercept = 5, lty=2, alpha=0.6) +
   theme_bw() +
   scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
@@ -121,11 +136,77 @@ ggplot(dd) +
   ggtitle("SSS vs SFF GWAS") +
   theme(plot.title = element_text(hjust=0.5) )
 
-ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered.jpeg")
+ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered.jpeg", width=5)
+```
+
+
+ Following this assumption, we assumed for calculation of a prior probability, P(T), that there are 25 genetic variants that may contribute to life history variation within the GWAS, P(T) = 25/number of variants. The significance level can be calculated by the formula: α = Prior Odds * 1/Posterior Odds (e.g. Wacholder et al. 2004), where prior odds is P(T)/(1− P(T)), posterior odds is calculated based on 95% certainty of observing a significant effect that is real (0.95/(1− 0.95)) and an upper bound of power (1) is used.
+ 
+25/739776
+> 3.379401e-05/(1-3.379401e-05)
+[1] 3.379515e-05
+
+```{r}
+pT=30/739776
+prior=pT/(1-pT)
+post=0.95/(1-0.95)
+alpha=prior*(1/post)
+alpha
+-log10(alpha)
+
+ps<-dd %>% filter(log10p > -log10(alpha))
+write_csv(ps, "outputs/104/ps.csv")
+ps
+
+lrt %>% filter(log10p > 5) %>% filter(log10p < -log10(alpha)) %>% filter(Chrom=="Lca16") %>% write_csv("outputs/104/lca16.csv")
+```
+mkxa
+mohawk homeobox a
+
+2,907,634..2,934,677
+
+mpp7a
+Name:	MAGUK p55 scaffold protein 7a
+Location:	complement(2,998,452..3,127,165)
+
+```{r}
+gwas<-ggplot(dd) +
+  geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
+  geom_hline(yintercept = 5, lty=2, alpha=0.9, size=.25) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+  geom_point(data=ps, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$Chrom) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("-log10(p)\n") +
+  xlab("\nChromosome") +
+ #   ggtitle("Brackish Water Resident vs Catadromous GWAS") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(axis.title = element_text(size=14, face="bold"))
+
+
+gwas
+ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered-post.jpeg", width=6, height=3.5)
 ```
 
 ```{r}
-outliers %>% select(Chromosome, Position, Frequency, Major, Minor, p, BHfdrchrom) %>% arrange(BHfdrchrom)
+dd %>% filter(Chromosome=="NC_066848.1") %>% filter(log10p>5)
+```
+
+These are in macrod2
+
+
+```{r}
+dd %>% filter(Chromosome=="NC_066836.1") %>% filter(log10p>5)
+```
+NC_066836.1 LOC108884286
+
+```{r}
+outliers %>% dplyr::select(Chromosome, Position, Frequency, Major, Minor, p, BHfdrchrom) %>% arrange(BHfdrchrom)
 ```
 
 
@@ -152,7 +233,7 @@ bcftools reheader --samples bamlists/44.names -o outputs/104/renamed-05.vcf.gz o
 
 
 bcftools +fill-tags outputs/104/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/104/pruned-05.vcf
-
+#maxAF or rand option
 bcftools +fill-tags outputs/104/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode maxAF  > outputs/104/pruned-10.vcf
 
 
@@ -165,14 +246,41 @@ tabix outputs/104/pruned-10.vcf.gz
 
 
 
+st
+
+```{sh, eval=FALSE}
+#bcftools view -Ov -r NC_066856.1:2922305-3001384 outputs/105/renamed-05.vcf.gz  > outputs/105/sub24.vcf
+
+bcftools view -Ov -r NC_066856.1:2843226-3080463 outputs/104/renamed-05.vcf.gz renamed-05.vcf.gz  > outputs/104/sub24.vcf
+#calc ld
+plink --vcf sub24.vcf --r2 inter-chr --ld-window-r2 0.1 --out sub24.ldf --allow-extra-chr --double-id
+```
+
+```{r}
+lc<-read.delim("outputs/104/sub24.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.1)
+
+  ggplot(lc) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  #geom_point(data=ps %>% filter(Chromosome=="NC_066856.1"), aes(x=Position, y=Position)) +
+  geom_point(data=dd %>% filter(Chromosome=="NC_066856.1") %>% arrange(-log10p) %>% top_n(n=8, w=log10p), aes(x=Position, y=Position)) +
+    scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle("RoMA Lca24 linkage disequilibrium plot")+
+  theme_bw() +
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5)) +
+  xlab("\nSNP A") +
+  ylab("SNP B\n")
+  
+ggsave("outputs/104/roma-ld-plot.jpeg")
+```
+
 ## Outlier clustering
 
 
 ```{r}
-ddf<-read_tsv("outputs/104/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% select(-X47) %>% filter(`FALSE`=="NC_066856.1")
+ddf<-read_tsv("outputs/104/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X47) %>% filter(`FALSE` %in% c("NC_066856.1")) #,"NC_066836.1","NC_066847.1","NC_066848.1"))
 ddf[ddf==-1]<-NA
-ddf2<-ddf %>% filter(X2 %in% outliers$Position) 
-m<-ddf2 %>% select(-`FALSE`, -X2) %>% as.matrix()
+ddf2<-ddf %>% filter(X2 %in% ps$Position) # %>% filter(X2 %in% c("2922305","2922339","2922605"))
+m<-ddf2 %>% dplyr::select(-`FALSE`, -X2) %>% as.matrix()
 annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
 annot$Phenotype<-meta$Phenotype
 annot
@@ -186,8 +294,8 @@ as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_
   ggtitle("Heatmap of associated barra variants on Lca24\n") + 
   theme(plot.title = element_text(hjust=0.5))
 
-ggsave("outputs/104/top-associated-variants.jpeg", width=12, height=6)
-ggsave("outputs/104/top-associated-variants.pdf", width=12, height=6)
+ggsave("outputs/104/top-associated-variants-ps.jpeg", width=12, height=6)
+ggsave("outputs/104/top-associated-variants-ps.pdf", width=12, height=6)
 
 ```
 
@@ -203,6 +311,14 @@ SFLc0054, SFLc0096, SFLc0714,
 SFLc0403, SFLc0356, SFLc0282
 
 86% correct assignment
+
+with ps
+23 SSS
+21 SFF
+
+Five misclassified as SSS
+four misclassified as SFF
+80% correct assignment
 
 
 ## PCA
@@ -282,3 +398,97 @@ SFLc0683, SFLc0398
 Misclassified SFF:
 SFLc0054, SFLc0096, SFLc0714, 
 SFLc0403, SFLc0356, SFLc0282
+
+# Nut provided width
+
+```{r}
+ls<-read_csv("data/ID53_inc1.csv") %>% dplyr::select(FishID, Inc_width1.2, Inc_width2.2,Incwidth_avg,Migrants, MeanSr)
+
+ls %>% group_by(Migrants) %>% summarise(Mean1.2=mean(Inc_width1.2), Mean2.2=mean(Inc_width2.2), MeanAvg=mean(Incwidth_avg))
+
+```
+
+```{r}
+ggplot(ls) +
+ geom_boxplot(aes(x=Migrants, y=Incwidth_avg)) +
+  theme_bw()
+```
+
+SFLc0619
+
+SFLc0788
+SFLc0787
+
+
+```{r}
+ggplot(ls) +
+ geom_point(aes(x=Inc_width1.2, y=Inc_width2.2, color=Migrants))
+```
+
+
+## snpR GWAS and a random forest
+
+1030750 variants...
+
+First, lets select the chrom of interest
+```{sh, eval=FALSE}
+bcftools view -Ov -r NC_066856.1 outputs/104/renamed-05.vcf.gz | bcftools view -i 'INFO/MAF > 0.10'  > outputs/104/lca24.vcf
+bcftools view -Ov  outputs/104/renamed-05.vcf.gz | bcftools view -i 'INFO/MAF > 0.10' | bcftools view -i 'INFO/MAF < 0.45'  > outputs/104/renamed-10.vcf
+
+```
+
+renamed 10 has 665077 variants
+
+```{r, eval=FALSE}
+#snps<-import.snpR.data("outputs/104/lca24.vcf", sample.meta = select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+snps<-import.snpR.data("outputs/104/renamed-10.vcf", sample.meta = dplyr::select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+
+p<-plot_clusters(snps, "NewPhenotype")
+p$plots$pca
+
+
+x<-calc_association(snps, response = "NewPheno", method = "chisq")
+y<-get.snpR.stats(x, stats="association")
+
+
+plot_manhattan(x, "chi_p_NewPheno", chr = "CHROM",
+               log.p = TRUE)$plot
+
+ggsave("outputs/104/snp-r-manhattan.jpeg")
+```
+
+```{r, eval=FALSE}
+y$single %>% mutate(Position=1:n()) %>% group_by(CHROM) %>%  mutate(BHfdr = p.adjust(chi_p_NewPheno, method = "BH")) %>% arrange(BHfdr) %>% write_csv("outputs/104/snpr-gwas-results.csv")
+```
+
+Random Forest
+
+```{r}
+rf<-run_random_forest(snps, response ="NewPheno", pvals=FALSE, num.trees = 100000)
+```
+oob less than 1% desirable, this is 35-50%
+
+```{r}
+rf$models
+## dummy phenotypes vs. predicted
+with(rf$models$.base_.base$predictions, plot(pheno, predicted)) # not overfit
+
+```
+
+
+```{r}
+s1 <- rf$x@stats %>% as_tibble()
+
+s1 %>% arrange(-NewPheno_RF_importance)
+```
+
+```{r}
+dat <- stickSNPs
+sample.meta(dat) <- cbind(weight = rnorm(ncol(stickSNPs)), sample.meta(stickSNPs))
+
+rf <- run_random_forest(dat, response = "weight", pvals = FALSE)
+rf$models
+## dummy phenotypes vs. predicted
+with(rf$models$.base_.base$predictions, plot(pheno, predicted)) # not overfit
+
+```

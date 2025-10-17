@@ -1,0 +1,6 @@
+State	Latitude	Longitude
+South Australia	-30	137
+Queensland	-27	145
+New South Wales	-30.5	145
+Victoria	-37	142.5
+Tasmania	-43	143

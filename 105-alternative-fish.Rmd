@@ -8,6 +8,20 @@ date: "2025-09-05"
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
 ```
 
+```{r}
+library(tidyverse)
+library(pcadapt)
+library(viridis)
+library(ggplotify)
+library(pheatmap)
+library(ggrepel)
+library(ggpubr)
+library(grid)
+library(raster)
+library(ozmaps)
+library(ggrepel)
+library(ggspatial)
+```
 
 Include, Daly, Roper, FitzroyQLD
 
@@ -28,14 +42,17 @@ ggplot(mq) +
   xlab("\nCoverage") 
 ```
 
+```{r}
+mq %>% group_by(Group) %>% summarise(Mean=mean(Coverage), Min=min(Coverage), Max=max(Coverage), Median=median(Coverage), Count=n())
+```
 
 Should probably downsample these...
 
 
 ```{r}
-mq %>% select(Path) %>% write_tsv("~/github/barra-lh/bamlists/69.bamlist", col_names = FALSE)
-mq %>% select(Pheno) %>% write_tsv("~/github/barra-lh/bamlists/69.pheno", col_names = FALSE)
-mq %>% select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/69.names", col_names = FALSE)
+mq %>% dplyr::select(Path) %>% write_tsv("~/github/barra-lh/bamlists/69.bamlist", col_names = FALSE)
+mq %>% dplyr::select(Pheno) %>% write_tsv("~/github/barra-lh/bamlists/69.pheno", col_names = FALSE)
+mq %>% dplyr::select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/69.names", col_names = FALSE)
 meta<-mq
 ```
 
@@ -51,10 +68,10 @@ srun -t 5-24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-ta
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/105/snps-wgs-05-glf.out 2> outputs/105/snps-wgs-05-glf.err &
 ```
 
-1130415
+1135370
 
 ```{sh, eval=FALSE}
-plink --tped snps-wgs-05-glf.tped --tfam snps-wgs-05-glf.tfam  --out plink-binary-05 --recode --allow-extra-chr --noweb
+plink --tped snps-wgs-05-glf.tped --tfam snps-wgs-05-glf.tfam --out plink-binary-05 --recode --allow-extra-chr --noweb
 plink --ped plink-binary-05.ped --map plink-binary-05.map --recode vcf --allow-extra-chr -out plink-05
 bgzip plink-05.vcf 
 tabix plink-05.vcf.gz
@@ -62,11 +79,411 @@ tabix plink-05.vcf.gz
 #renaming vcf bcftools/1.13
 module load bcftools
 
-bcftools reheader --samples bamlists/84.names -o outputs/103/renamed-05.vcf.gz outputs/103/plink-05.vcf.gz
+bcftools reheader --samples bamlists/69.names -o outputs/105/renamed-05.vcf.gz outputs/105/plink-05.vcf.gz
 
 
-bcftools +fill-tags outputs/103/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/103/pruned-05.vcf
+bcftools +fill-tags outputs/105/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/105/pruned-05-rand.vcf
 
-bgzip outputs/103/pruned-05.vcf
-tabix outputs/103/pruned-05.vcf.gz
+bcftools +fill-tags outputs/105/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode maxAF  > outputs/105/pruned-05-max.vcf
+
+#maxAF or rand option
+bcftools +fill-tags outputs/105/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/105/pruned-10.vcf
+
+
+bgzip outputs/105/pruned-05-rand.vcf
+tabix outputs/105/pruned-05-rand.vcf.gz
+
+bgzip outputs/105/pruned-05-max.vcf
+tabix outputs/105/pruned-05-max.vcf.gz
+
+bgzip outputs/105/pruned-10.vcf
+tabix outputs/105/pruned-10.vcf.gz
+```
+
+
+
+
+## Outlier clustering
+
+
+```{r}
+meta<-mq
+outliers<-read_csv("outputs/104/outliers.csv")
+ps<-read_csv("outputs/104/ps.csv")
+ddf<-read_tsv("outputs/105/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X72) %>% filter(`FALSE`=="NC_066856.1")
+ddf[ddf==-1]<-NA
+ddf2<-ddf %>% filter(X2 %in% ps$Position) 
+m<-ddf2 %>% dplyr::select(-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+annot$Phenotype<-meta$Phenotype
+annot
+annot_colors=list(Phenotype=c(SFF="red",SSS="blue",UNK="grey75"))
+
+```
+ color=colorRampPalette(c("#000004FF","#B63679FF","#FCFDBFFF"))))
+ 
+```{r}
+
+pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6)
+grid.text("foo", x=-20, rot=90, gp=gpar(fontsize=25))
+
+```
+
+
+```{r}
+as.ggplot(
+pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6,
+         angle_col = 315)) +
+         
+#  ggtitle("Heatmap of associated barra variants on Lca24\n") +
+  labs(caption="\nIndividual") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(plot.caption = element_text(size=14, hjust=0.4, face="bold")) 
+
+ggsave("outputs/105/top-associated-variants.jpeg", width=12, height=6)
+ggsave("outputs/105/top-associated-variants.pdf", width=12, height=6)
+
+```
+
+
+23 SSS 
+21 SFF
+
+Misclassified SS:  
+SFLc0683, SFLc0398
+
+Misclassified SFF:
+SFLc0054, SFLc0096, SFLc0714, 
+SFLc0403, SFLc0356, SFLc0282
+
+86% correct assignment
+
+
+```{r}
+meta<-mq
+ps<-read_csv("outputs/104/lca16.csv")
+ddf<-read_tsv("outputs/105/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X72) %>% filter(`FALSE`=="NC_066848.1")
+ddf[ddf==-1]<-NA
+ddf2<-ddf %>% filter(X2 %in% ps$Position) 
+m<-ddf2 %>% dplyr::select(-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+annot$Phenotype<-meta$Phenotype
+annot
+annot_colors=list(Phenotype=c(SFF="#F0978D",SSS="#63D7DE",UNK="grey50"))
+
+```
+
+```{r}
+as.ggplot(pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors,
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6)) +
+  ggtitle("Heatmap of associated barra variants on Lca16\n") + 
+  theme(plot.title = element_text(hjust=0.5))
+
+ggsave("outputs/105/top-associated-variants-lca16.jpeg", width=12, height=6)
+ggsave("outputs/105/top-associated-variants-lca16.pdf", width=12, height=6)
+
+```
+
+## PCA
+
+```{r}
+path_to_file <- "outputs/105/pruned-05-max.vcf.gz"
+
+filename <- read.pcadapt(path_to_file, type = "vcf")
+```
+
+_1_ choose a K   
+
+```{r}
+x <- pcadapt(input = filename, K = 20) 
+```
+
+```{r}
+var<-round(x$singular.values^2*100,2)
+var
+```
+
+10% with max AF pc1
+8.43 with rand snp pc1
+
+```{r}
+#plot(x, option = "screeplot")
+panela<-plot(x, option = "screeplot", K = 10) + ggtitle("A") +
+  theme_bw() +
+  theme(plot.title = element_text(size=14, face="bold")) +
+  theme(panel.grid = element_blank(), panel.background = element_blank()) +
+  scale_x_continuous(breaks=seq(1,10,1), labels=seq(1,10,1)) +
+  ylab("Proportion of Explained Variance\n") +
+  xlab("\nPrincipal Component") +
+  theme(axis.title=element_text(size=12, face="bold"))
+panela
+
+ggsave("outputs/105/scree-plot.jpeg", width=4, height=4)
+```
+
+
+```{r}
+plot(x, option = "scores")
+```
+
+
+```{r}
+meta<-mq
+m<-meta
+```
+
+```{r}
+pcadata<-x$scores[,1:5] %>% as_tibble()
+pcadata<-pcadata %>% bind_cols(m)
+
+```
+
+```{r}
+p1<-ggplot(pcadata) +
+  geom_point(aes(x=V1, y=V2, fill=NewPhenotype, shape=Group), alpha=0.75, cex=2) +
+  theme_bw() +
+ # theme(legend.position = "top") +
+  theme(panel.grid = element_blank()) +
+  xlab("PC 1") +
+  ylab("PC 2") +
+#  scale_fill_viridis_d(option="H") +
+  scale_fill_manual(values=c("red","blue","grey")) +
+  scale_shape_manual(values=c(24,22,21,23)) +
+  xlab(paste0("PC1 ",var[1],"%")) +
+  ylab(paste0("PC2 ",var[2],"%")) +
+  theme(axis.title=element_text(size=12, face="bold"))
+
+
+p1
+
+```
+
+
+```{r}
+p2<-ggplot(pcadata) +
+  geom_point(aes(x=V1, y=V3, fill=NewPhenotype, shape=Group), alpha=0.75, cex=2) +
+  theme_bw() +
+  #theme(legend.position = "none") +
+  theme(panel.grid = element_blank()) +
+#  scale_fill_viridis_d(option="H") +
+  scale_fill_manual("Migratory Phenotype",values=c("red","blue","grey"), labels=c("MIG","BWR","UNK"), ) +
+  scale_shape_manual("Sampling Location",values=c(24,22,21,23), labels=c("Daly River","Roper River","Burdekin Region","Fitzroy River")) +
+  xlab(paste0("PC1 ",var[1],"%")) +
+  ylab(paste0("PC3 ",var[3],"%")) + 
+  guides(fill=guide_legend(override.aes=list(shape=21))) +
+    theme(axis.title=element_text(size=12, face="bold"))
+
+
+p2
+```
+
+
+```{r}
+ggarrange(p1+theme(legend.position = "none"),p2, widths=c(1,1.3))
+
+ggsave("outputs/105/new-australian-data-pcs.jpeg", width=10, height=4)
+```
+
+## Let's pull out outliers on PC1 and see what they are!! Are the Life-history variants part of it?
+
+
+
+```{r}
+x <- pcadapt(filename, K = 4)
+summary(x)
+```
+
+```{r}
+plot(x , option = "manhattan")
+```
+
+```{r}
+plot(x, option = "qqplot")
+```
+
+```{r}
+hist(x$pvalues, xlab = "p-values", main = NULL, breaks = 50, col = "orange")
+```
+
+```{r}
+plot(x, option = "stat.distribution")
+```
+
+
+```{R}
+par(mfrow = c(2, 2))
+for (i in 1:4)
+  plot(x$loadings[, i], pch = 19, cex = .3, ylab = paste0("Loadings PC", i))
+```    
+```{r}
+plot(x)
+```
+
+```{r}
+padj <- p.adjust(x$pvalues,method="bonferroni")
+alpha <- 0.05
+outliers <- which(padj < alpha)
+length(outliers)
+
+snp_pc <- get.pc(x, outliers)
+snp_pc %>% group_by(PC) %>% summarize(Count=n())
+
+```
+
+```{r}
+padj <- p.adjust(x$pvalues,method="BH")
+alpha <- 0.05
+outliers <- which(padj < alpha)
+length(outliers)
+
+snp_pc <- get.pc(x, outliers)
+snp_pc %>% group_by(PC) %>% summarize(Count=n())
+
+```
+
+
+get snps `gunzip -c outputs/105/pruned-05-max.vcf.gz| grep -v "^#" | cut -f1-3 | awk '{print $0"\t"NR}' > outputs/105/pruned-05-max-snp-numbers.tsv`
+
+
+```{r}
+snp_pc1<-snp_pc %>% filter(PC==1)
+labels<-read_tsv("meta/lates-lgs-named.txt") %>% rename(Name=Chrom, Chrom=Chromosome)
+labels
+```
+
+
+```{r}
+snpnumbers<-read_tsv("outputs/105/pruned-05-max-snp-numbers.tsv", col_names = c("Chrom","Pos","Marker","SNP"))
+snps<-left_join(as_tibble(snp_pc1), snpnumbers) 
+
+snps %>% group_by(PC, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+
+snps %>% left_join(labels) 
+```
+# Map of Australia, with states and sampled populations
+
+## Get meta
+
+```{r}
+sites<-read_tsv("meta/sites.tsv")
+states<-read_tsv("meta/state-data.txt")
+states
+```
+```{r}
+domain <- c(105, 158, -46, -5)
+```
+
+```{r}
+oz <- ozmap_data("states")
+locs1<-ggplot(oz) +
+  geom_sf() +
+  geom_point(data=sites, aes(x=long, y=lat), shape=sites$shape, fill=sites$color, size=5) +
+  geom_text_repel(data=sites, aes(x=long, y=lat, label=Locality)) +
+  annotation_scale() +
+     annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(0.2, "in"), pad_y = unit(0.3, "in"), style=north_arrow_nautical())
+
+locs1
+```
+  geom_text_repel(data=aus,aes(x=Longitude, y=Latitude, label=Host), max.overlaps = Inf) +
+  geom_text(data=states, aes(x=Longitude, y=Latitude, label=State)) +
+  coord_sf(xlim = c(domain[1]+4,domain[2]-2.5), ylim=c(domain[3]+2, domain[4]-5)) +
+ +
+  scale_fill_manual(values=colors[1:4]) +
+  theme(legend.position = "none")
+
+## Get raster
+```{r, eval=FALSE}
+nat.earth<-stack("~/github/fish-lake/data/earth/NE2_HR_LC_SR_W_DR/NE2_HR_LC_SR_W_DR.tif")
+
+nat.crop <- crop(nat.earth, y=extent(domain))
+
+rast.table <- data.frame(xyFromCell(nat.crop, 1:ncell(nat.crop)),
+                         getValues(nat.crop/255))
+
+
+rast.table$rgb <- with(rast.table, rgb(NE2_HR_LC_SR_W_DR_1,
+                                       NE2_HR_LC_SR_W_DR_2,
+                                       NE2_HR_LC_SR_W_DR_3,
+                                       1))
+
+save(rast.table, file="data/rast.rda")
+
+# here eric implements something and I copy it
+tidy_subset <- function(x, longlat) {
+  x@data$id <- rownames(x@data)
+  x.f <- broom::tidy(x) %>%
+    dplyr::left_join(., x@data, by = "id") %>%
+    dplyr::tbl_df() %>%
+    filter(long > longlat[1],
+           long < longlat[2],
+           lat > longlat[3],
+           lat < longlat[4])
+}
+
+```
+
+```{r}
+load("data/rast.rda")
+```
+
+
+```{r}
+locs<-ggplot() +
+  geom_raster(data = rast.table, mapping = aes(x = x, y = y), fill = rast.table$rgb, interpolate = TRUE)  +
+   geom_sf(data=oz, fill=NA) +
+   geom_point(data=sites, aes(x=long, y=lat), shape=sites$shape, fill=sites$color, size=4) +
+   geom_text_repel(data=sites, aes(x=long, y=lat, label=Locality)) +
+   coord_sf(xlim = c(domain[1]+5,domain[2]-2.5), ylim=c(domain[3]+2, domain[4]-5))  +
+   annotation_scale() +
+     annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(0.2, "in"), pad_y = unit(0.3, "in"), style=north_arrow_nautical()) +
+  ylab("Latitude") +
+  xlab("Longitude") +
+  theme_bw() +
+  theme(axis.title = element_text(size=14, face="bold"))
+locs
+
+ggsave("outputs/105/map.jpeg", width=4, height=4)
+```  
+  geom_jitter(data=aus, aes(x=Longitude, y=Latitude, fill=Location), pch=25, size=3) +
+  geom_label_repel(data=aus,aes(x=Longitude, y=Latitude, label=tip_name), max.overlaps = Inf, size=2, alpha=0.8) +
+  geom_text(data=states, aes(x=Longitude, y=Latitude, label=State)) +
+
+  theme(panel.grid=element_blank())  +
+    scale_fill_manual(values=colors[1:4]) +
+  theme(legend.position = "none") +
+  annotation_scale() +
+     annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(0.2, "in"), pad_y = unit(0.3, "in"), style=north_arrow_nautical())
+ggsave("outputs/300/plasmo-map-01312025.pdf", width=8, height=6)
+ggsave("outputs/300/plasmo-map-01312025.jpeg", width=8, height=6)
+```{r}
+blank <- grid.rect(gp=gpar(col="white"))
+```
+```{r}
+ab<-ggarrange(locs + ggtitle("A") + theme(plot.title = element_text(size=18, face="bold")),
+            ggarrange(ggplotGrob(ggarrange(blank, panela + ggtitle("B")+ theme(plot.title = element_text(size=18, face="bold")), blank, ncol=1, heights=c(.5,2,.5))),blank, widths=c(2,1)), widths=c(1,1))
+
+ab
+```
+
+
+
+
+```{r}
+cd<-ggarrange(p1 + theme(legend.position = "none") + ggtitle("C") + theme(plot.title = element_text(size=18, face="bold")),
+              p2 + ggtitle("D") + theme(plot.title = element_text(size=18, face="bold")), widths=c(1,1.4))
+cd
+```
+
+
+```{r}
+ggarrange(ab, cd, ncol=1)
+
+ggsave("outputs/105/combined-figure.pdf", width=10, height=8)
+ggsave("outputs/105/combined-figure.jpeg", width=10, height=8)
+
 ```

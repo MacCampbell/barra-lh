@@ -1,0 +1,78 @@
+---
+title: "106-variant-prediction"
+output: html_document
+date: "2025-10-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+Need to do some variant effect prediction!!!
+
+snpEff https://pcingola.github.io/SnpEff/
+
+Updating to new version into ~/snpEff
+
+works: java -jar snpEff.jar
+
+ASB_HGAPassembly_v1.99                                      	Lates_calcarifer                                            	          	         
+
+
+Is this the same as Genome assembly TLL_Latcal_v3/GCF_001640805.2/GCF_001640805.2, checking UCSC browser
+UCSC Genome Browser on TLL_Latcal_v3 Aug. 2022 barramundi perch (ASB-BC8 2022) (GCF_001640805.2)
+
+Example 
+
+```{sh,eval=FALSE}
+srun -p high -t 12:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GRCh37.75 examples/test.chr22.vcf > test.chr22.ann.vcf
+```
+
+example works
+
+
+Get barra genome together as I can't tell what the one is we have already annotated
+
+in snpEff/data/
+```{sh, eval=FALSE}
+mkdir  GCF001640805.2
+cd GCF001640805.2
+
+ln -s ~/lates-wgs/genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna.gz ./
+ln -s ~/lates-wgs/genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna ./
+
+ln -s ~/lates-wgs/genome/GCF_001640805.2_TLL_Latcal_v3_genomic.gff.gz ./
+ln -s ~/lates-wgs/genome/GCF_001640805.2_TLL_Latcal_v3_genomic.gtf ./
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/640/805/GCF_001640805.2_TLL_Latcal_v3/GCF_001640805.2_TLL_Latcal_v3_protein.faa.gz ./
+gunzip GCF_001640805.2_TLL_Latcal_v3_protein.faa.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/640/805/GCF_001640805.2_TLL_Latcal_v3/GCF_001640805.2_TLL_Latcal_v3_cds_from_genomic.fna.gz
+gunzip GCF_001640805.2_TLL_Latcal_v3_cds_from_genomic.fna.gz
+#rename
+mv GCF_001640805.2_TLL_Latcal_v3_genomic.gtf genes.gtf
+mv GCF_001640805.2_TLL_Latcal_v3_genomic.fna sequences.fa
+mv GCF_001640805.2_TLL_Latcal_v3_protein.faa protein.fa
+mv GCF_001640805.2_TLL_Latcal_v3_cds_from_genomic.fna cds.fa
+
+```
+
+Edit config file
+GCF001640805.2.genome : Barra
+java -jar snpEff.jar build -gtf22 -v GCF001640805.2
+
+Seems to work!
+need cds and proteins, adding those in and redoing
+
+
+
+
+Let's pull our variants of interest, can use outputs/105/plink-05.vcf.gz
+
+bcftools view -T snps.txt
+
+```{sh, eval=FALSE}
+bcftools view --regions-file meta/snps-to-annotate.txt outputs/105/plink-05.vcf.gz -Ov -o outputs/106/snps-to-annotate.vcf
+```
