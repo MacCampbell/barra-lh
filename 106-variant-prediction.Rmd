@@ -62,17 +62,130 @@ mv GCF_001640805.2_TLL_Latcal_v3_cds_from_genomic.fna cds.fa
 Edit config file
 GCF001640805.2.genome : Barra
 java -jar snpEff.jar build -gtf22 -v GCF001640805.2
+java -jar snpEff.jar build -gff3 -v GCF001640805.2
 
 Seems to work!
 need cds and proteins, adding those in and redoing
 
+FATAL ERROR: No CDS checked. This might be caused by differences in FASTA file transcript IDs respect to database's transcript's IDs.
+Transcript IDs from database (sample):
+	'XM_018663720.2'
+	'XM_018686422.2'
+	'XM_051074797.1'
+	'XM_051069189.1'
+	'XM_018701284.2'
+	'XM_018686639.1'
+	'XM_018686641.2'
+	'XM_018698913.2'
+	'XM_018698912.2'
+	'XM_018698911.2'
+	'XM_018698910.2'
+	'XM_018698917.2'
+	'XM_018698916.2'
+	'XM_018698915.2'
+	'XM_018698914.2'
+	'XM_018681277.2'
+	'XM_018680070.2'
+	'XM_018702463.2'
+	'XM_018702462.2'
+	'XM_018669034.2'
+	'XM_018694613.2'
+	'XM_018692363.2'
+Transcript IDs from database (fasta file):
+	'lcl|NC_066845.1_cds_XP_018528452.1_21994'
+	'lcl|NC_066852.1_cds_XP_018547415.1_34212'
+	'lcl|NC_066853.1_cds_XP_018526197.1_35229'
+	'1_cds_XP_018550317'
+	'lcl|NC_066842.1_cds_XP_018547838.1_16210'
+	'1_cds_XP_018550319'
+	'1_cds_XP_018550314'
+	'1_cds_XP_018550315'
+	'lcl|NW_026116143.1_cds_XP_050923966.1_42161'
+	'1_cds_XP_018525353'
+	'1_cds_XP_018550310'
+	'lcl|NC_066847.1_cds_XP_018538666.1_27014'
+	'1_cds_XP_018550311'
+	'1_cds_XP_018550312'
+	'1_cds_XP_018525356'
+	'lcl|NC_066835.1_cds_XP_050922669.1_3957'
+	'1_cds_XP_018525350'
+	'lcl|NC_066848.1_cds_XP_018550181.1_28590'
+	'1_cds_XP_018525351'
+	'1_cds_XP_018525352'
+	'lcl|NC_066833.1_cds_XP_018550923.1_158'
+	'1_cds_XP_018525357'
 
+In this snpEff github folder, i use the script fix_fasta_protein_cds.pl ; fix_fasta.pl; fix_gff.pl; fix_gtf.pl before run script buildNCBI in ./snpEff/scripts folder.
 
+scripts_build/ncbi
+
+ fix_fasta_protein_cds
+
+Pulled down into ~/snpEff
+
+```{sh, eval=FALSE}
+git clone https://github.com/pcingola/SnpEff
+```
 
 Let's pull our variants of interest, can use outputs/105/plink-05.vcf.gz
 
 bcftools view -T snps.txt
 
 ```{sh, eval=FALSE}
-bcftools view --regions-file meta/snps-to-annotate.txt outputs/105/plink-05.vcf.gz -Ov -o outputs/106/snps-to-annotate.vcf
+bcftools view --regions-file meta/snps-to-annotate.txt outputs/105/renamed-05.vcf.gz -Ov -o meta/snps-to-annotate.vcf
 ```
+
+```{sh,eval=FALSE}
+java -jar snpEff.jar download ASB_HGAPassembly_v1.99
+java -jar snpEff.jar info ASB_HGAPassembly_v1.99
+````
+
+ASB_HGAPassembly_v1.99.genome : Lates_calcarifer
+ASB_HGAPassembly_v1.99.reference : ftp://ftp.ensembl.org/pub/release-99/gtf/
+ASB_HGAPassembly_v1.99.retrieval_date : 2020-01-28
+
+java -Xmx10g -jar snpEff.jar ASB_HGAPassembly_v1.99 ~/barra-lh/snps-to-annotate.vcf
+srun -p high -t 12:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GCF001640805.2 ~/barra-lh/snps-to-annotate.vcf > snps.ann.vcf
+
+
+## Building locally in
+/Users/mac/github/SnpEff/data/Latcal.v3.RefSeq
+
+see github/SnpEff/custom-ncbi
+Here is how things line up.
+
+ASB_LG1	NC_066833.1
+ASB_LG2	NC_066834.1
+ASB_LG3	NC_066835.1
+ASB_LG4	NC_066836.1
+ASB_LG5	NC_066837.1
+ASB_LG6	NC_066838.1
+ASB_LG7_1	NC_066839.1
+ASB_LG8	NC_066840.1
+ASB_LG9	NC_066841.1
+ASB_LG10	NC_066842.1
+ASB_LG11	NC_066843.1
+ASB_LG12	NC_066844.1
+ASB_LG13	NC_066845.1
+ASB_LG14	NC_066846.1
+ASB_LG15	NC_066847.1
+ASB_LG16_LG22	NC_066848.1
+ASB_LG17	NC_066849.1
+ASB_LG18	NC_066850.1
+ASB_LG19	NC_066851.1
+ASB_LG20	NC_066852.1
+ASB_LG21	NC_066853.1
+ASB_LG7_2	NC_066854.1
+ASB_LG23	NC_066855.1
+ASB_LG24	NC_066856.1
+
+```{sh, eval=FALSE}
+# Non-standard Databases
+#---
+
+# GCF001640805.2 barra
+TLL_Latcal.v3.RefSeq.genome : Barra
+```
+
+putting config file here instead of in ./config
+java -jar snpEff.jar build -gtf22 -v TLL_Latcal.v3.RefSeq
