@@ -117,11 +117,11 @@ write_csv(outliers, "outputs/104/outliers.csv")
 #Make enough colors
 nb.cols <- nrow(chroms)
 mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
-
+mycolors2<-rep(c("grey50","grey20"),12)
 
 ggplot(dd) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
-  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+ # geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
   geom_hline(yintercept = 5.9, lty=2, alpha=0.6) +
   #geom_hline(yintercept = 5, lty=2, alpha=0.6) +
   theme_bw() +
@@ -130,7 +130,7 @@ ggplot(dd) +
   theme(legend.title = element_blank()) +
   theme(panel.grid = element_blank()) +
   theme(legend.position = "none") +
-  scale_color_manual(values=mycolors) +
+  scale_color_manual(values=mycolors2) +
   ylab("-log10(p)") +
   xlab("Chromosome") +
   ggtitle("SSS vs SFF GWAS") +
@@ -168,29 +168,39 @@ mohawk homeobox a
 mpp7a
 Name:	MAGUK p55 scaffold protein 7a
 Location:	complement(2,998,452..3,127,165)
+```{r}
+dat <- data.frame(x = rnorm(100), y = rnorm(100))
+ggplot(dat, aes(x=x,y=y)) +
+    geom_point() +
+    labs(y=expression(paste("-", log[10]," (p - ",italic(value),")",sep="")))
+```
 
 ```{r}
 gwas<-ggplot(dd) +
   geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
   geom_hline(yintercept = 5, lty=2, alpha=0.9, size=.25) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
-  geom_point(data=ps, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+ # geom_point(data=ps, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
   theme_bw() +
   scale_x_continuous(breaks=chroms$Position, labels=chroms$Chrom) +
-  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=7)) +
   theme(legend.title = element_blank()) +
   theme(panel.grid = element_blank()) +
   theme(legend.position = "none") +
-  scale_color_manual(values=mycolors) +
-  ylab("-log10(p)\n") +
+  scale_color_manual(values=mycolors2) +
+#  ylab("-log10(p)\n") +
   xlab("\nChromosome") +
+  labs(y=expression(paste("-", log[10],"(",italic(p),"-value)",sep=""))) +
  #   ggtitle("Brackish Water Resident vs Catadromous GWAS") +
   theme(plot.title = element_text(hjust=0.5)) +
-  theme(axis.title = element_text(size=14, face="bold"))
+  theme(axis.title= element_text(size=14))+
+  theme(axis.text = element_text(size=10))
 
 
 gwas
 ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered-post.jpeg", width=6, height=3.5)
+ggsave("outputs/104/SSS-SFF-44-inds-all-chroms-filtered-post.pdf", width=6, height=3.5)
+
 ```
 
 ```{r}

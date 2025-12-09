@@ -1,0 +1,36 @@
+---
+title: "108-scrambled-gwas"
+output: html_document
+date: "2025-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+Let's randomize our phenotypes and see what happens!
+bamlists/44.bamlist
+
+```{r, eval=FALSE}
+rand <- rbinom(44, 1, 0.5)
+pdf<-read_tsv("bamlists/44.pheno", col_names = c("Pheno")) 
+pdf$Rand<-rand
+pdf %>% mutate(Same=ifelse(Pheno==Rand,"Yes","No")) %>% group_by(Pheno, Same) %>% summarize(Count=n())
+pdf %>% select(Rand) %>% write_tsv("bamlists/44-rand.pheno",col_names = FALSE)
+```
+
+
+
+Run GWAS
+
+```{sh, eval=FALSE}
+srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/44-rand.pheno -GL 1 -minInd 42 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/108/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/108/combined-asso.out 2> outputs/108/combined-asso.err &
+```

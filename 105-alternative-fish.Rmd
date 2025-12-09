@@ -53,6 +53,7 @@ Should probably downsample these...
 mq %>% dplyr::select(Path) %>% write_tsv("~/github/barra-lh/bamlists/69.bamlist", col_names = FALSE)
 mq %>% dplyr::select(Pheno) %>% write_tsv("~/github/barra-lh/bamlists/69.pheno", col_names = FALSE)
 mq %>% dplyr::select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/69.names", col_names = FALSE)
+write_csv(mq, file="meta/mq.csv")
 meta<-mq
 ```
 
@@ -148,6 +149,8 @@ ggsave("outputs/105/top-associated-variants.pdf", width=12, height=6)
 ```
 
 
+
+
 23 SSS 
 21 SFF
 
@@ -160,6 +163,23 @@ SFLc0403, SFLc0356, SFLc0282
 
 86% correct assignment
 
+
+clustering_method = "ward.D"
+```{r}
+as.ggplot(
+pheatmap(m, annotation_col = annot, cluster_rows = FALSE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$X2, fontsize_row = 14, fontsize_col = 6, clustering_method = "ward.D",
+         angle_col = 315)) +
+         
+#  ggtitle("Heatmap of associated barra variants on Lca24\n") +
+  labs(caption="\nIndividual") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(plot.caption = element_text(size=14, hjust=0.4, face="bold")) 
+
+ggsave("outputs/105/top-associated-variants-ward.jpeg", width=12, height=6)
+ggsave("outputs/105/top-associated-variants-ward.pdf", width=12, height=6)
+
+```
 
 ```{r}
 meta<-mq
@@ -279,6 +299,20 @@ p2<-ggplot(pcadata) +
 p2
 ```
 
+```{r}
+ggplot(pcadata) +
+  geom_point(aes(x=V1, y=V4, fill=NewPhenotype, shape=Group), alpha=0.75, cex=2) +
+  theme_bw() +
+  #theme(legend.position = "none") +
+  theme(panel.grid = element_blank()) +
+#  scale_fill_viridis_d(option="H") +
+  scale_fill_manual("Migratory Phenotype",values=c("red","blue","grey"), labels=c("MIG","BWR","UNK"), ) +
+  scale_shape_manual("Sampling Location",values=c(24,22,21,23), labels=c("Daly River","Roper River","Burdekin Region","Fitzroy River")) +
+  xlab(paste0("PC1 ",var[1],"%")) +
+  ylab(paste0("PC4 ",var[4],"%")) + 
+  guides(fill=guide_legend(override.aes=list(shape=21))) +
+    theme(axis.title=element_text(size=12, face="bold"))
+```
 
 ```{r}
 ggarrange(p1+theme(legend.position = "none"),p2, widths=c(1,1.3))

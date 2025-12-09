@@ -1,0 +1,308 @@
+---
+title: "107-ld"
+output: html_document
+date: "2025-12-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(ggrepel)
+library(grid)
+library(RColorBrewer)
+library(pcadapt)
+library(ggpubr)
+library(vcfR)
+library(adegenet)
+library(tidyverse)
+```
+
+
+```{r}
+meta<-read_csv("meta/mq.csv")
+meta$Group<-factor(meta$Group,levels=c("Daly River","Roper River","Burdekin","FitzroyQLD"))
+```
+
+Previously: Called snps on all chroms
+
+```{sh, eval=FALSE}
+srun -t 5-24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
+-minInd 66 -bam bamlists/69.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-rf meta/lates-lgs.txt -out outputs/105/snps-wgs-05-glf  \
+-minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
+-doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/105/snps-wgs-05-glf.out 2> outputs/105/snps-wgs-05-glf.err &
+```
+
+1135370
+
+```{sh, eval=FALSE}
+plink --tped snps-wgs-05-glf.tped --tfam snps-wgs-05-glf.tfam --out plink-binary-05 --recode --allow-extra-chr --noweb
+plink --ped plink-binary-05.ped --map plink-binary-05.map --recode vcf --allow-extra-chr -out plink-05
+bgzip plink-05.vcf 
+tabix plink-05.vcf.gz
+
+#renaming vcf bcftools/1.13
+module load bcftools
+
+bcftools reheader --samples bamlists/69.names -o outputs/105/renamed-05.vcf.gz outputs/105/plink-05.vcf.gz
+
+```
+
+Need to downsample chroms and generate PCAs/ld plots, locally:
+
+```{sh, eval=FALSE}
+gunzip -c  outputs/105/renamed-05.vcf.gz  |  grep "#" > outputs/107/header.txt 
+
+gunzip -c outputs/105/renamed-05.vcf.gz | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%50==0) print}' > outputs/107/t50.vcf
+#22707 snps
+
+cat outputs/107/header.txt  outputs/107/t50.vcf > outputs/107/thinned50.vcf; bgzip outputs/107/thinned50.vcf; tabix outputs/107/thinned50.vcf.gz;
+
+cat meta/lates-lgs.txt  | while read line; do bcftools view -Ov -r $line outputs/107/thinned50.vcf.gz  > outputs/107/vcfs/$line.vcf; done
+
+
+for f in *.vcf; do plink --vcf $f --r2 inter-chr --ld-window-r2 0.1 --out `basename $f vcf`ldf --allow-extra-chr --double-id; done;
+```
+
+```{r}
+
+files<-list.files("outputs/107/vcfs",pattern = "*.ldf.ld", full.names = TRUE)
+
+plotLd<-function(file) {
+  chrom<-gsub("outputs/107/vcfs/","",file)
+  chrom<-gsub(".ldf.ld","", chrom)
+  lc<-read.delim(file,sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.2)
+
+  ggplot(lc) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle(paste0(chrom))+
+  theme_bw() +
+  theme(panel.grid = element_blank())
+ggsave(paste0("outputs/107/chrom-ld/",chrom,"-ld.pdf"))
+}
+
+lapply(files, plotLd)
+```
+
+```{r}
+
+files<-list.files("outputs/107/vcfs",pattern = "*.vcf", full.names = TRUE)
+
+plotPCA<-function(file) {
+  meta<-meta
+  chrom<-gsub("outputs/107/vcfs/","",file)
+  chrom<-gsub(".vcf","", chrom)
+  
+  vcf<-read.vcfR(file=file)
+  genind<-vcfR2genind(vcf)
+  genind@pop<-as.factor(meta$Group)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(meta)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=Group),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  scale_fill_viridis_d(option="H") +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") 
+ # geom_text_repel(aes(x=Axis1, y=Axis2,label=id))
+pc12
+
+ggsave(paste0("outputs/107/chrom-pcs/",chrom,"-pcs.pdf"))
+}
+
+lapply(files, plotPCA)
+```
+
+
+
+## PCAdapt
+
+```{r}
+path_to_file <- "outputs/105/pruned-05-max.vcf.gz"
+filename <- read.pcadapt(path_to_file, type = "vcf")
+```
+
+```{r}
+x <- pcadapt(input = filename, K = 20) 
+```
+
+```{r}
+var<-round(x$singular.values^2*100,2)
+var
+```
+```{r}
+x <- pcadapt(filename, K = 3)
+summary(x)
+```
+
+```{r}
+plot(x , option = "manhattan")
+```
+
+```{r}
+plot(x, option = "qqplot")
+```
+
+```{r}
+hist(x$pvalues, xlab = "p-values", main = NULL, breaks = 50, col = "orange")
+```
+
+```{r}
+plot(x, option = "stat.distribution")
+```
+
+
+```{R}
+par(mfrow = c(2, 2))
+for (i in 1:3)
+  plot(x$loadings[, i], pch = 19, cex = .3, ylab = paste0("Loadings PC", i))
+```    
+```{r}
+plot(x)
+```
+
+
+
+```{r}
+padj <- p.adjust(x$pvalues,method="bonferroni")
+alpha <- 0.05
+outliers <- which(padj < alpha)
+length(outliers)
+
+snp_pc <- get.pc(x, outliers)
+snp_pc %>% group_by(PC) %>% summarize(Count=n())
+
+```
+
+
+```{r}
+padj <- p.adjust(x$pvalues,method="BH")
+alpha <- 0.05
+outliers <- which(padj < alpha)
+length(outliers)
+
+snp_pc <- get.pc(x, outliers)
+snp_pc %>% group_by(PC) %>% summarize(Count=n())
+
+```
+
+
+
+
+get snps `gunzip -c outputs/105/pruned-05-max.vcf.gz| grep -v "^#" | cut -f1-3 | awk '{print $0"\t"NR}' > outputs/105/pruned-05-max-snp-numbers.tsv`
+
+
+```{r}
+snp_pc1<-snp_pc # %>% filter(PC==1)
+labels<-read_tsv("meta/lates-lgs-named.txt") %>% rename(Name=Chrom, Chrom=Chromosome)
+labels
+```
+
+
+```{r}
+snpnumbers<-read_tsv("outputs/105/pruned-05-max-snp-numbers.tsv", col_names = c("Chrom","Pos","Marker","SNP"))
+snps<-left_join(as_tibble(snp_pc1), snpnumbers) 
+
+snps %>% group_by(PC, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+
+snps %>% left_join(labels) %>% arrange(PC, Name)
+```
+
+## Local PCA
+
+```{sh, eval=FALSE}
+cat meta/lates-lgs.txt  | while read line; do bcftools view -Ob -r $line outputs/107/thinned50.vcf.gz > outputs/107/bcf/$line.bcf; done;
+for f in outputs/107/bcf/*.bcf; do bcftools index $f; done;
+```
+
+```{r}
+samples<-meta %>% select(sample_id) %>% rename(ID=sample_id)
+
+population<-meta %>% select(Group) %>% rename(population=Group)
+
+table<-cbind(samples, population)
+write.table(table, "outputs/107/bcf/sample_info.tsv", quote = TRUE, row.names = FALSE, sep="\t")
+
+```
+
+`./run_lostruct.R -i /Users/mac/github/barra-lh/outputs/107/bcf -t snp -s 20 -m 4 -I /Users/mac/github/barra-lh/outputs/107/bcf/sample_info.tsv -j 107
+cp lostruct_results/type_snp_size_20_weights_none_jobid_107/mds_coords.csv ~/github/barra-lh/outputs/107`
+
+```{r}
+mds<-read_csv("outputs/107/mds_coords.csv") # 20 snp windows
+#make tidy
+tidymds<-mds %>% gather(MDS, Value, 3:6)
+MDS1<-filter(tidymds, MDS=="MDS1") %>% rename(MDS1=MDS) %>% rename(Value1=Value)
+MDS2<-filter(tidymds, MDS=="MDS2") %>% rename(MDS2=MDS) %>% rename(Value2=Value)
+MDS3<-filter(tidymds, MDS=="MDS3") %>% rename(MDS3=MDS) %>% rename(Value3=Value)
+MDS4<-filter(tidymds, MDS=="MDS4") %>% rename(MDS4=MDS) %>% rename(Value4=Value)
+```
+```{r}
+ggplot(mds)+
+  geom_point(aes(x=MDS1, y=MDS2, fill=chrom), pch=21, alpha=0.75) +
+  scale_fill_viridis_d(option="magma") +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+ggplot(mds)+
+  geom_point(aes(x=MDS1, y=MDS3, fill=chrom), pch=21, alpha=0.75) +
+  scale_fill_viridis_d(option="magma") +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+ggplot(mds)+
+  geom_point(aes(x=MDS1, y=MDS4, fill=chrom), pch=21, alpha=0.75) +
+  scale_fill_viridis_d(option="magma") +
+  theme_bw() +
+  theme(legend.position = 'none')
+```
+
+```{r}
+p1<-MDS1 %>% mutate(Index=1:n())
+
+out <- boxplot.stats(p1$Value1)$out
+out_ind <- which(p1$Value1 %in% c(out))
+length(out_ind)
+outliers<-p1[out_ind,]
+outliers %>% group_by(chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+```
+
+```{r}
+chroms<-p1 %>% group_by(chrom) %>% mutate(Start=min(Index), Stop=max(Index)) %>% select(chrom,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+#Make enough colors
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+ggplot(p1) +
+  geom_rect(data=chroms, aes(xmin=Start, xmax=Stop, ymin=min(p1$Value1), ymax=max(p1$Value1)), fill=mycolors, alpha=0.25) +
+  geom_point(data=p1, aes(x=Index, y=Value1, color=chrom), alpha=0.75, cex=0.5) +
+  geom_point(data=outliers, aes(x=Index, y=Value1), color="black", cex=0.5) +
+  theme_bw() +
+  scale_x_continuous(breaks=chroms$Position, labels=chroms$chrom) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=6)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  ylab("MDS1") +
+  xlab("Chromosome")
+```

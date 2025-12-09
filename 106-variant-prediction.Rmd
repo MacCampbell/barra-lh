@@ -189,3 +189,39 @@ TLL_Latcal.v3.RefSeq.genome : Barra
 
 putting config file here instead of in ./config
 java -jar snpEff.jar build -gtf22 -v TLL_Latcal.v3.RefSeq
+java -jar snpEff.jar build -gtf22 -v -noCheckCds TLL_Latcal.v3.RefSeq
+
+#building regulatory databases from gff
+https://pcingola.github.io/SnpEff/snpeff/build_reg/#option-1-using-a-gff-file
+java -Xmx20G -jar snpEff.jar build -v -onlyReg TLL_Latcal.v3.RefSeq
+
+skipping cds check
+
+java -Xmx10g -jar snpEff.jar TLL_Latcal.v3.RefSeq ../barra-lh/meta/snps-to-annotate-recoded.vcf > test.vcf
+
+# no regulatory
+java -Xmx10g -jar snpEff.jar TLL_Latcal.v3.RefSeq -onlyReg ../barra-lh/meta/snps-to-annotate-recoded.vcf
+
+-onlyProtein
+java -Xmx10g -jar snpEff.jar TLL_Latcal.v3.RefSeq -onlyProtein ../barra-lh/meta/snps-to-annotate-recoded.vcf
+seems to be the same as no specification in terms of results
+java -Xmx10g -jar snpEff.jar TLL_Latcal.v3.RefSeq -v
+# Local
+
+java -jar snpEff.jar download ASB_HGAPassembly_v1.99
+java -Xmx10g -jar snpEff.jar ASB_HGAPassembly_v1.99 ../barra-lh/meta/snps-to-annotate-recoded.vcf
+chromosome not found!!
+java -Xmx10g -jar snpEff.jar ASB_HGAPassembly_v1.99 -v
+
+#		'CYIF01000095.1'	18910200	Standard
+#		'CYIF01000096.1'	17327306	Standard
+#		'CYIF01000018.1'	14175190	Standard
+#		'CYIF01000070.1'	12864767	Standard
+#		'CYIF01000097.1'	7855374	Standard
+#		'CYIF01000044.1'	7185878	Standard
+#		'CYIF01000098.1'	6802755	Standard
+#		'CYIF01000010.1'	6798370	Standard
+#		'CYIF01000099.1'	6268167	Standard
+#		'CYIF01000100.1'	5261392	Standard
+#		'CYIF01000063.1'	5084806	Standard
+#		'CYIF01000028.1'	5019418	Standard
