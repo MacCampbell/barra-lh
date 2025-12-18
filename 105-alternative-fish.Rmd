@@ -119,7 +119,7 @@ annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("samp
 annot$Phenotype<-meta$Phenotype
 annot
 annot_colors=list(Phenotype=c(SFF="red",SSS="blue",UNK="grey75"))
-
+meta %>% filter(NewPhenotype!=Phenotype)
 ```
  color=colorRampPalette(c("#000004FF","#B63679FF","#FCFDBFFF"))))
  

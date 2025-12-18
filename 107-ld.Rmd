@@ -58,7 +58,16 @@ gunzip -c  outputs/105/renamed-05.vcf.gz  |  grep "#" > outputs/107/header.txt
 gunzip -c outputs/105/renamed-05.vcf.gz | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%50==0) print}' > outputs/107/t50.vcf
 #22707 snps
 
+gunzip -c outputs/105/renamed-05.vcf.gz | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%20==0) print}' > outputs/107/t20.vcf
+#56768
+
+gunzip -c outputs/105/renamed-05.vcf.gz | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%10==0) print}' > outputs/107/t10.vcf
+#
+
 cat outputs/107/header.txt  outputs/107/t50.vcf > outputs/107/thinned50.vcf; bgzip outputs/107/thinned50.vcf; tabix outputs/107/thinned50.vcf.gz;
+cat outputs/107/header.txt  outputs/107/t20.vcf > outputs/107/thinned20.vcf; bgzip outputs/107/thinned20.vcf; tabix outputs/107/thinned20.vcf.gz;
+cat outputs/107/header.txt  outputs/107/t10.vcf > outputs/107/thinned10.vcf; bgzip outputs/107/thinned10.vcf; tabix outputs/107/thinned10.vcf.gz;
+
 
 cat meta/lates-lgs.txt  | while read line; do bcftools view -Ov -r $line outputs/107/thinned50.vcf.gz  > outputs/107/vcfs/$line.vcf; done
 
@@ -146,6 +155,12 @@ var<-round(x$singular.values^2*100,2)
 var
 ```
 ```{r}
+plot(x, option = "scores", pop=meta$Group)
+plot(x, option = "scores", i = 1, j = 3, pop = meta$Group)
+
+```
+
+```{r}
 x <- pcadapt(filename, K = 3)
 summary(x)
 ```
@@ -220,13 +235,17 @@ snps<-left_join(as_tibble(snp_pc1), snpnumbers)
 
 snps %>% group_by(PC, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
 
-snps %>% left_join(labels) %>% arrange(PC, Name)
+sdf<-snps %>% left_join(labels) %>% arrange(PC, Name) %>% relocate(Name, Chrom, Pos, PC)
+
+sdf %>% filter(Chrom=="NC_066856.1")
 ```
 
 ## Local PCA
 
 ```{sh, eval=FALSE}
 cat meta/lates-lgs.txt  | while read line; do bcftools view -Ob -r $line outputs/107/thinned50.vcf.gz > outputs/107/bcf/$line.bcf; done;
+cat meta/lates-lgs.txt  | while read line; do bcftools view -Ob -r $line outputs/107/thinned20.vcf.gz > outputs/107/bcf/$line.bcf; done;
+
 for f in outputs/107/bcf/*.bcf; do bcftools index $f; done;
 ```
 
@@ -240,11 +259,18 @@ write.table(table, "outputs/107/bcf/sample_info.tsv", quote = TRUE, row.names = 
 
 ```
 
+thinned50
 `./run_lostruct.R -i /Users/mac/github/barra-lh/outputs/107/bcf -t snp -s 20 -m 4 -I /Users/mac/github/barra-lh/outputs/107/bcf/sample_info.tsv -j 107
 cp lostruct_results/type_snp_size_20_weights_none_jobid_107/mds_coords.csv ~/github/barra-lh/outputs/107`
 
+thinned 20
+`./run_lostruct.R -i /Users/mac/github/barra-lh/outputs/107/bcf -t snp -s 20 -m 4 -I /Users/mac/github/barra-lh/outputs/107/bcf/sample_info.tsv -j 108
+cp lostruct_results/type_snp_size_20_weights_none_jobid_108/mds_coords.csv ~/github/barra-lh/outputs/107/mds_coords-20.csv`
+
 ```{r}
-mds<-read_csv("outputs/107/mds_coords.csv") # 20 snp windows
+mds<-read_csv("outputs/107/mds_coords.csv") # 20 snp windows, thinned 50
+mds<-read_csv("outputs/107/mds_coords-20.csv") # 20 snp windows, thinned 20
+
 #make tidy
 tidymds<-mds %>% gather(MDS, Value, 3:6)
 MDS1<-filter(tidymds, MDS=="MDS1") %>% rename(MDS1=MDS) %>% rename(Value1=Value)

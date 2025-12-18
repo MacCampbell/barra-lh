@@ -32,10 +32,10 @@ m<-read_csv(file="meta/m52.csv") %>% filter(!specimen_id %in% c("SFLc0316","SFLc
   mutate(NewPheno=ifelse(specimen_id=="SFLc0427", "1",Pheno)) %>% mutate(NewPhenotype=ifelse(specimen_id=="SFLc0427", "SFF",Phenotype))
 m  %>% filter(specimen_id=="SFLc0427")
 ```
-
+0 = marine
 
 ```{r}
-m %>% filter(Coverage>8) %>% group_by(Pheno, Phenotype) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage), Min=min(Coverage), Max=max(Coverage))
+m %>% filter(Coverage>8) %>% group_by(NewPheno) %>% summarize(Count=n(), MedianCov=median(Coverage), AverageCov=mean(Coverage), Min=min(Coverage), Max=max(Coverage))
 m %>% filter(Coverage>8) %>% dplyr::select(Path) %>% write_tsv("bamlists/44.bamlist", col_names = FALSE)
 m %>% filter(Coverage>8) %>% dplyr::select(NewPheno) %>% write_tsv("bamlists/44.pheno", col_names = FALSE)
 m %>% filter(Coverage>8) %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/44.names", col_names = FALSE)
@@ -90,6 +90,7 @@ lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log1
   mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
   mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
 lrt  %>% arrange(BHfdrchrom)  %>% dplyr::select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
+lrt %>% dplyr::select(Chromosome, Position, Major, Minor, LRT, p, log10p) %>% write_tsv("outputs/104/Supplemental Table S2.tsv")
 ```
 
 739,776 Positions
