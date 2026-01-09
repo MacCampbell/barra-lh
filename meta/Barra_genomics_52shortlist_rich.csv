@@ -1,0 +1,53 @@
+FishID,LTMPFishID,DateCaught,CatchLocation,CollectionLatitude,CollectionLongitude,Collector,CollectionMethod,FishTotalLength,YearBorn,LifeHistories,IncrementUp,IncrementDown,FW_residency
+SFLc0046,19BAR1246,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,870,2009,SSS,NA,NA,NA
+SFLc0050,19BAR1250,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,910,2011,SFF,1,4,3
+SFLc0054,19BAR1254,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,940,2009,SFF,1,5,4
+SFLc0065,19BAR1265,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,890,2014,SFF,1,5,4
+SFLc0072,19BAR1272,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,900,2013,SFF,1,2,1
+SFLc0087,19BAR1287,10/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,860,2013,SFF,1,2,1
+SFLc0096,19BAR1296,12/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,640,2012,SFF,1,2,1
+SFLc0112,19BAR1312,12/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,680,2012,SFF,1,7,6
+SFLc0145,19BAR1345,12/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,850,2008,SFF,1,11,10
+SFLc0228,19BAR1384,13/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,650,2015,SSS,NA,NA,NA
+SFLc0229,19BAR1389,13/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,660,2011,SSS,NA,NA,NA
+SFLc0237,19BAR1407,13/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,710,2010,SFF,1,2,1
+SFLc0249,19BAR1426,13/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,590,2014,SSS,NA,NA,NA
+SFLc0280,19BAR1457,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,980,2010,SFF,1,10,9
+SFLc0282,19BAR1458,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,990,2011,SFF,1,9,8
+SFLc0288,19BAR1463,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,840,2008,SSS,NA,NA,NA
+SFLc0293,19BAR1468,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,860,2010,SFF,1,2,1
+SFLc0312,19BAR1487,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,830,2013,SSS,NA,NA,NA
+SFLc0316,19BAR1491,13/2/2019,dry tropics,-19.5,147.5,FisheriesQueensland,gillnet,770,2012,SSS,NA,NA,NA
+SFLc0356,19BAR1192,14/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,680,2012,SFF,1,2,1
+SFLc0383,19BAR1599,5/3/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,610,2015,SSS,NA,NA,NA
+SFLc0398,19BAR1698,5/3/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,790,2011,SSS,NA,NA,NA
+SFLc0403,19BAR1603,25/2/2019,cleveland bay,-19.2494,146.5985,FisheriesQueensland,gillnet,780,2010,SFF,1,2,1
+SFLc0406,19BAR1606,25/2/2019,cleveland bay,-19.2494,146.5985,FisheriesQueensland,gillnet,830,2012,SSS,NA,NA,NA
+SFLc0423,19BAR1623,26/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,720,2011,SSS,NA,NA,NA
+SFLc0427,19BAR1627,26/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,800,2014,SSS,NA,NA,NA
+SFLc0428,19BAR1628,26/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,630,2016,SFF,1,2,1
+SFLc0431,19BAR1631,26/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,690,2014,SFF,1,3,2
+SFLc0435,19BAR1635,26/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,600,2012,SFF,1,2,1
+SFLc0444,19BAR1644,27/2/2019,upstart bay,-19.7872,147.5997,FisheriesQueensland,gillnet,690,2012,SSS,NA,NA,NA
+SFLc0468,19BAR1668,25/2/2019,burdekin,-19.7542,147.4166,FisheriesQueensland,gillnet,850,2014,SFF,1,2,1
+SFLc0496,19BAR1773,12/3/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,630,2011,SSS,NA,NA,NA
+SFLc0508,19BAR1708,5/3/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,740,2010,SSS,NA,NA,NA
+SFLc0511,19BAR1711,5/3/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,680,2011,SFF,1,2,1
+SFLc0581,19BAR1844,28/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,680,2011,SFF,1,3,2
+SFLc0586,19BAR1849,28/2/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,610,2009,SSS,NA,NA,NA
+SFLc0589,19BAR1852,23/2/2019,upstart bay,-19.7872,147.5997,FisheriesQueensland,gillnet,860,2014,SSS,2,5,3
+SFLc0592,19BAR1854,24/3/2019,townsville inshore,-19.25,147.1183,FisheriesQueensland,gillnet,670,2014,SSS,NA,NA,NA
+SFLc0604,19BAR1904,18/9/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,600,2013,SSS,NA,NA,NA
+SFLc0614,19BAR1914,18/9/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,760,2016,SSS,NA,NA,NA
+SFLc0619,19BAR1919,18/9/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,630,2016,SFF,1,2,1
+SFLc0625,19BAR1925,18/9/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,620,2016,SFF,1,3,2
+SFLc0631,19BAR1938,23/10/2019,k21,-19.25,147.25,FisheriesQueensland,gillnet,720,2011,SSS,NA,NA,NA
+SFLc0638,19BAR1945,23/10/2019,k21,-19.25,147.25,FisheriesQueensland,gillnet,610,2016,SSS,NA,NA,NA
+SFLc0642,19BAR1949,23/10/2019,k21,-19.25,147.25,FisheriesQueensland,gillnet,680,2012,SSS,NA,NA,NA
+SFLc0650,19BAR1957,23/10/2019,k21,-19.25,147.25,FisheriesQueensland,gillnet,650,2012,SSS,NA,NA,NA
+SFLc0651,19BAR1958,23/10/2019,k21,-19.25,147.25,FisheriesQueensland,gillnet,690,2010,SSS,NA,NA,NA
+SFLc0680,19BAR4043,25/10/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,850,2009,SFF,1,3,2
+SFLc0683,19BAR4046,25/10/2019,bowling green bay,-19.5738,147.2285,FisheriesQueensland,gillnet,860,2010,SSS,NA,NA,NA
+SFLc0714,19BAR1814,11/3/2019,planto,-19.5599,147.4699,FisheriesQueensland,gillnet,870,2014,SFF,1,3,2
+SFLc0724,19BAR1824,11/3/2019,planto,-19.5599,147.4699,FisheriesQueensland,gillnet,900,2012,SFF,1,2,1
+SFLc1460,rec,1/11/2019,haughton,-19.41227778,147.1369444,Marcus McCloskey,line,704,2011,SFF,1,2,1

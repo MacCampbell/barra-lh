@@ -1,0 +1,45 @@
+---
+title: "109-GWAS-residency"
+output: html_document
+date: "2026-01-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+can we look at a continuous time variable and genetic background
+```{r}
+time<-read_csv("meta/Barra_genomics_52shortlist_rich.csv")
+time<-time %>% select(FishID, FW_residency) %>% na.omit()
+```
+
+
+```{r}
+m<-read_csv(file="meta/m52.csv") %>% filter(!specimen_id %in% c("SFLc0316","SFLc0625","SFLc0592")) %>%
+  mutate(NewPheno=ifelse(specimen_id=="SFLc0427", "1",Pheno)) %>% mutate(NewPhenotype=ifelse(specimen_id=="SFLc0427", "SFF",Phenotype))
+
+m2<-time %>% left_join(m, by=c("FishID"="specimen_id")) %>% filter(Coverage>5)
+```
+
+```{r}
+m2 %>% select(Path) %>% write_tsv(col_names = FALSE, file="bamlists/22.bamlist")
+m2 %>% select(FW_residency) %>% write_tsv(col_names = FALSE, file="bamlists/22.pheno")
+
+m2 %>% filter(FW_residency >1)
+ggplot(m2) +
+  geom_histogram(aes(x=FW_residency))
+```
+
+
+```{sh, eval=FALSE}
+srun -t 24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 2 -yQuant $HOME/barra-lh/bamlists/22.pheno -GL 1 -minInd 21 -minMaf 0.05 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/109/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/22.bamlist  > outputs/109/combined-asso.out 2> outputs/109/combined-asso.err &
+```
