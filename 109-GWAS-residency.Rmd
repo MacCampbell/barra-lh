@@ -37,9 +37,27 @@ ggplot(m2) +
 
 
 ```{sh, eval=FALSE}
-srun -t 24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
- -doAsso 2 -yQuant $HOME/barra-lh/bamlists/22.pheno -GL 1 -minInd 21 -minMaf 0.05 \
+srun -t 24:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 2 -doPost 1 -yQuant $HOME/barra-lh/bamlists/22.pheno -GL 1 -minInd 21 -minMaf 0.05 \
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/109/combined-asso-95 \
  -bam $HOME/barra-lh/bamlists/22.bamlist  > outputs/109/combined-asso.out 2> outputs/109/combined-asso.err &
 ```
+
+
+What did we get out of the deal?
+NC_066849.1	21944550	A	G	0.318183	22	10.189332	10/10/2
+NC_066849.1	21944925	C	G	0.318182	22	10.189356	10/10/2
+NC_066849.1	21946084	A	G	0.318182	22	10.189357	10/10/2
+NC_066851.1	23875900	A	G	0.318201	22	10.191175	10/10/2
+NC_066841.1	15499337	G	A	0.319296	22	10.964723	10/10/2
+NC_066847.1	15754278	T	G	0.311554	22	11.014222	10/10/1
+NC_066840.1	4928051	A	G	0.311547	22	11.014447	10/10/1
+NC_066841.1	15501585	A	T	0.319133	22	11.118839	10/10/2
+NC_066848.1	522217	C	T	0.318213	22	11.147074	10/10/2
+NC_066850.1	14882805	G	A	0.318189	22	11.147961	10/10/2
+NC_066841.1	298579	C	T	0.318181	22	11.148079	10/10/2
+NC_066836.1	21212096	T	A	0.318161	22	11.148528	10/10/2
+NC_066841.1	16600816	T	A	0.316719	22	11.375089	10/10/2
+NC_066847.1	16752411	G	A	0.318276	22	12.165025	10/10/2
+NC_066833.1	19895264	C	T	0.316407	22	12.291709	10/10/2
