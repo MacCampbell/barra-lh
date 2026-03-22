@@ -1,0 +1,168 @@
+---
+title: "110-dapc"
+output: html_document
+date: "2026-03-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(adegenet)
+library(dartR)
+library(vcfR)
+library(tidyverse)
+```
+
+Separating fish with DAPC (using pruned loci at first, then we can use unpruned?)
+```{sh, eval=FALSE}
+bcftools +fill-tags outputs/105/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > outputs/110/filtered.vcf
+```
+
+```{r}
+d<-read.vcfR("outputs/105/pruned-05-max.vcf.gz")
+#d<-read.vcfR("outputs/110/filtered.vcf")
+obj<-vcfR2genlight(d)
+```
+
+```{r}
+mq<-read_csv(file="meta/mq.csv")
+bm<-mq %>% filter(Group=="Burdekin")
+```
+
+```{r}
+obj@ind.names
+```
+
+
+# Dapc with all samples
+strongly supports K=2
+```{r,eval=FALSE}
+find.clusters(obj, n.pca = 70, n.clust=4)
+```
+
+# DAPC with just burdekin
+
+```{r}
+obj2<-obj[obj@ind.names %in% bm$specimen_id,]
+```
+
+```{r}
+dapc<-dapc(obj2, as.factor(bm$NewPhenotype), n.pca = 40, n.da = 1)
+```
+
+```{r}
+scatter(dapc)
+```
+
+Let's make a plot of assignments
+
+
+```{r}
+bm$Assign<-dapc$assign
+sff<-dapc$posterior[,1] %>% as_tibble() %>% rename(SFF=value)
+sss<-dapc$posterior[,2] %>% as_tibble() %>% rename(SSS=value)
+
+bm<-bind_cols(bm,sff,sss)
+``` 
+
+```{r}
+b2<-bm %>% select(specimen_id, NewPhenotype, Assign, SFF, SSS ) %>% arrange(NewPhenotype,-SFF) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(5:6, names_to = "AssignedClass", values_to = "Posterior")
+
+labels<-b2 %>% group_by(NewPhenotype) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+
+ticks<-b2 %>% select(Index, specimen_id,NewPhenotype) %>% unique()
+```
+
+
+```{r}
+ggplot(b2) +
+  geom_col(aes(x=Index, y=Posterior, fill=AssignedClass), alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=1) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=1) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Migratory","Resident")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$specimen_id) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(panel.background = element_blank()) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold")) +
+  geom_text(data=labels, aes(x=Position), label=c("Migratory Otolith Chemistry","Resident Otolith Chemistry"), y=1.04, size=3) +
+  ylim(0,1.03)
+  
+ggsave("outputs/110/posterior-assignment-dapc.jpeg", width=9, height=4)
+```
+Get sites with the most loadings:
+```{r}
+contrib <- loadingplot(dapc$var.contr, axis=1,
+thres=.002, lab.jitter=0)
+
+contribs<-as.tibble(dapc$var.contr)
+contribs$Chromosome<-obj2@chromosome
+contribs$Position<-obj2@position
+contribs<-mutate(contribs, number=1:n())
+
+```
+```{r}
+topfrac<-top_frac(contribs, n=.001, LD1)
+topcons<-contribs %>% filter(LD1 > 0.002) %>% arrange(-LD1)
+topcons
+
+write_csv(topcons, "outputs/110/loadings.csv")
+```
+Compare to lrt scores
+
+```{r}
+lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+```
+
+```{r}
+lrt %>% filter(Position %in% topcons$Position) %>% arrange(Chromosome)
+```
+```{r}
+lrt %>% filter(Chromosome=="NC_066856.1") %>% filter(Position > 2992178-2e5) %>% 
+  filter(Position < 2992178+2e5) %>% 
+  arrange(-log10p)
+
+```
+
+filter to subset of things
+NC_066834.1_28780240
+```{r}
+sub<-read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(Site=paste0(Chromosome,"_",Position)) %>% filter(Site %in% obj2@loc.names) %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1))  %>%  filter(log10p != Inf) %>% filter(log10p>=0) %>% mutate(bonfer = p.adjust(p, method = "bonferroni")) 
+sub
+```
+
+```{r}
+sub %>% arrange(-log10p) %>% select(Chromosome, Position, LRT, log10p, p, bonfer)
+```
+
+
+## GWAS with the one chrom
+
+```{r}
+lrt2<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>% filter(Frequency>0.3) %>%
+  mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+```
+
+```{r}
+lrt2 %>% filter(BHfdrchrom <0.05)
+```

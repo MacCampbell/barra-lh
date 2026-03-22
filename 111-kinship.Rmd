@@ -1,0 +1,153 @@
+---
+title: "111-kinship"
+output: html_document
+date: "2026-03-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(tidyverse)
+library(viridis)
+```
+
+Testing for kin in the Burdekin barra
+```{sh, eval=FALSE}
+# https://github.com/ANGSD/NgsRelate
+### First we generate a file with allele frequencies (angsdput.mafs.gz) and a file with genotype likelihoods (angsdput.glf.gz).
+
+srun -p bmh -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
+-b $HOME/barra-lh/bamlists/44.bamlist -rf meta/lates-lgs.txt \
+-ref  genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 42 -minMapQ 20 -minQ 20 \
+-GL 2 -doMajorMinor 1 -doMaf 1 -snp_pval 1e-6 -minMaf 0.05 -doGlf 3 \
+-out outputs/111/kin > outputs/111/kin.out 2> outputs/111/kin.err &
+
+#	-> Number of sites retained after filtering: 1609596 
+#	[ALL done] cpu-time used =  43680.16 sec
+#	[ALL done] walltime used =  24467.00 sec
+### Then we extract the frequency column from the allele frequency file and remove the header (to make it in the format NgsRelate needs)
+
+zcat outputs/111/kin.mafs.gz | cut -f6 |sed 1d > outputs/111/freq
+
+### run NgsRelate
+module load ngsrelate/2.0     
+srun -p bmh -t 12:00:00 --mem=32G --nodes=1 --cpus-per-task=2 ngsRelate -g outputs/111/kin.glf.gz -n 44 -f outputs/111/freq  -O outputs/111/kin-res.tsv
+
+#        [ALL done] cpu-time used =  4531.40 sec (filereading took: 7.68 sec)
+#        [ALL done] walltime used =  2299.00 sec (filereading took: 8.00 sec)
+
+```
+
+```{r}
+m44<-read_csv("meta/meta44.csv") %>% mutate(SampleID=1:n())
+m44$SampleID<-m44$SampleID-1
+m44
+mkin<-m44
+```
+
+```{r}
+rel<-read_tsv(file = "outputs/111/kin-res.tsv") %>% left_join(mkin, by=c("a"="SampleID")) %>% 
+  rename(SampleNameA=specimen_id) %>%
+  left_join(mkin, by=c("b"="SampleID")) %>% 
+  rename(SampleNameB=specimen_id) %>% relocate(SampleNameA, SampleNameB)
+
+rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta) %>% 
+  write_csv("outputs/111/kin.csv")
+
+rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta) %>% 
+  filter(rab>0.5)
+```
+
+
+```{r}
+cols<-viridis(6, alpha=0.75)
+```
+
+```{r}
+ggplot(rel)+geom_histogram(aes(x=rab), bins=50, fill="grey", color="grey") +
+  geom_vline(xintercept =.50, col=cols[1]) + #Parent offspring/full sibs
+  geom_vline(xintercept =.25, col=cols[2]) + #2nd degree half sib, grandparent, aunt/uncle, double first cousins
+  geom_vline(xintercept =.125, col=cols[3]) + # 3rd cousins
+  geom_vline(xintercept = .0625, col=cols[4]) + 
+  geom_vline(xintercept = .03125, col=cols[5]) +
+  geom_vline(xintercept = 0.0, col=cols[6]) +
+  scale_x_continuous(breaks=c(0,.03125, .0625, .125, .25, .5),
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust=1, angle=45)) +
+  theme(panel.grid=element_blank()) +
+  ylab("Count") +
+  xlab("Pairwise Relatedness") 
+```
+
+```{r}
+ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
+  geom_vline(xintercept =.25, col=cols[1]) + #Parent offspring/full sibs
+  geom_vline(xintercept =.125, col=cols[2]) + #2nd degree
+  geom_vline(xintercept =.0625, col=cols[3]) + # 3rd
+  geom_vline(xintercept = .0313, col=cols[4]) +
+  geom_vline(xintercept = .0156, col=cols[5]) +
+  geom_vline(xintercept = 0.0, col=cols[6]) +
+  scale_x_continuous(breaks=c(0,0.0156, 0.0313, 0.0625, 0.125, 0.25),
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust=1, angle=45)) +
+  theme(panel.grid=element_blank()) +
+  ylab("Count") +
+  xlab("Kinship Coefficient")
+```
+
+
+```{r}
+rel %>% filter(theta > 0.125) %>% select(SampleNameA, SampleNameB, theta)
+```
+
+
+## Let's make some clones and see if that fixes this
+SFLc0096 614649
+SFLc0312 614660
+SFLc0619 614683
+in data/kin
+```{sh, eval=FALSE}
+cp ../bams/616648.sort.flt.bam Dup1.bam
+cp ../bams/616650.sort.flt.bam Dup2.bam
+cp ../bams/616652.sort.flt.bam Dup3.bam
+for f in *.bam; do samtools index $f; done;
+
+samtools merge -o Comb12.bam Dup1.bam Dup2.bam; samtools merge -o Comb13.bam Dup1.bam Dup3.bam; samtools merge -o Comb23.bam Dup2.bam Dup3.bam; 
+
+for f in Comb*.bam; do samtools index $f; done;
+
+```
+
+Testing for kin in the Burdekin barra including some intentional dups.
+```{sh, eval=FALSE}
+# https://github.com/ANGSD/NgsRelate
+### First we generate a file with allele frequencies (angsdput.mafs.gz) and a file with genotype likelihoods (angsdput.glf.gz).
+
+srun -p bmh -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd -P 6  \
+-b $HOME/barra-lh/bamlists/kin.bamlist -rf meta/lates-lgs.txt \
+-ref  genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 48 -minMapQ 20 -minQ 20 \
+-GL 2 -doMajorMinor 1 -doMaf 1 -snp_pval 1e-6 -minMaf 0.05 -doGlf 3 \
+-out outputs/111/kin-dup > outputs/111/kin-dup.out 2> outputs/111/kin-dup.err &
+
+#	-> Number of sites retained after filtering: 1609596 
+#	[ALL done] cpu-time used =  43680.16 sec
+#	[ALL done] walltime used =  24467.00 sec
+### Then we extract the frequency column from the allele frequency file and remove the header (to make it in the format NgsRelate needs)
+
+zcat outputs/111/kin-dup.mafs.gz | cut -f6 |sed 1d > outputs/111/freq-dup
+
+### run NgsRelate
+module load ngsrelate/2.0     
+srun -p bmh -t 12:00:00 --mem=32G --nodes=1 --cpus-per-task=2 ngsRelate -g outputs/111/kin.glf.gz -n 50 -f outputs/111/freq-dup  -O outputs/111/kin-dup-res.tsv
+
+#        [ALL done] cpu-time used =  4531.40 sec (filereading took: 7.68 sec)
+#        [ALL done] walltime used =  2299.00 sec (filereading took: 8.00 sec)
+
+```

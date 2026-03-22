@@ -71,7 +71,16 @@ srun -t 72:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/104/combined-asso-100 \
  -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/104/combined-asso.out 2> outputs/104/combined-asso.err &
+ 
+ #100% threshold maf 0.2
+ srun -t 72:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/44.pheno -GL 1 -minInd 44 -minMaf 0.2 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/104/combined-asso-100-maf02 \
+ -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/104/combined-asso-02.out 2> outputs/104/combined-asso-02.err &
 ```
+1143346 variants @ 95 maf 01
+879361 variants @ 100 maf 015
 
 
 
@@ -83,8 +92,11 @@ names
 ```
 
 ```{r}
-lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
-  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+#lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+# filter(log10p != Inf) %>% filter(log10p>=0) %>% filter(Frequency > 0.3) %>% mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+
+lrt<- read_tsv("outputs/104/combined-asso-100.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(Frequency>0.2) %>% filter(log10p != Inf) %>% filter(log10p>=0) %>% mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
   mutate(BHfdr = p.adjust(p, method = "BH")) %>%
   group_by(Chromosome) %>%
   mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
@@ -99,8 +111,8 @@ Define outliers
 
 
 ```{r}
--log10(.05/739776)
--log10(.1/739776)
+-log10(.05/nrow(lrt))
+-log10(.1/nrow(lrt))
 -log10(.05/40000)
 ```
 
@@ -122,8 +134,8 @@ mycolors2<-rep(c("grey50","grey20"),12)
 
 ggplot(dd) +
   geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
- # geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
-  geom_hline(yintercept = 5.9, lty=2, alpha=0.6) +
+  geom_point(data=outliers, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+ # geom_hline(yintercept = 5.9, lty=2, alpha=0.6) +
   #geom_hline(yintercept = 5, lty=2, alpha=0.6) +
   theme_bw() +
   scale_x_continuous(breaks=chroms$Position, labels=chroms$Chromosome) +
@@ -131,7 +143,7 @@ ggplot(dd) +
   theme(legend.title = element_blank()) +
   theme(panel.grid = element_blank()) +
   theme(legend.position = "none") +
-  scale_color_manual(values=mycolors2) +
+  scale_color_manual(values=mycolors) +
   ylab("-log10(p)") +
   xlab("Chromosome") +
   ggtitle("SSS vs SFF GWAS") +
