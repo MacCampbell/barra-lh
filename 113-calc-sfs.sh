@@ -21,6 +21,7 @@ echo "#!/bin/bash
 #SBATCH -n 8
 #SBATCH -N 1
 #SBATCH --partition=bmh
+#SBATCH --mem=128GB 
 #SBATCH --time=48:00:00
 #SBATCH --output=outputs/113/${pop}-%j.slurmout
 
@@ -30,7 +31,7 @@ echo "#!/bin/bash
 #This isn't going to work, let's make our own pop.bamlists
 
 nInd=\$(wc -l bamlists/${pop}.bamlist | awk '{print \$1}')
-mInd=\$((\${nInd}/1.111))
+mInd=\$((\${nInd}/2))
 
 #############################################
 #Getting sites together (base) maccamp@farm:~/spineflower/0009$ cat selection.sites | perl -pe 's/_/:/g' > sites

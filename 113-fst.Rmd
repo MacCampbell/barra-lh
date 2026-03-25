@@ -31,3 +31,6 @@ sample sizes are 21 & 21
 mig %>% select(Path) %>% write_tsv("bamlists/mig.bamlist", col_names = FALSE)
 res %>% select(Path) %>% write_tsv("bamlists/res.bamlist", col_names = FALSE)
 ```
+
+ bash 113-calc-sfs.sh 
+
