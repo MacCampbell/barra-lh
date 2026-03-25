@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -o outputs/202/calc-sfs-%j.out
 #SBATCH -t 24:00
-#SBATCH -partition=bmh
+#SBATCH ---partition=bmh
 
 mkdir outputs/202
 wc=$(wc -l poplists/poplist.txt | awk '{print $1}')
