@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH -o outputs/202/calc-sfs-%j.out
-#SBATCH -t 48:00
+#SBATCH -t 24:00
 
 
 mkdir outputs/202
-wc=$(wc -l poplists/poplist3.txt | awk '{print $1}')
+wc=$(wc -l poplists/poplist.txt | awk '{print $1}')
 x=1
 while [ $x -le $wc ]
 do
-	string="sed -n ${x}p poplists/poplist3.txt"
+	string="sed -n ${x}p poplists/poplist.txt"
 	str=$($string)
 
 	var=$(echo $str | awk -F"\t" '{print $1}')
@@ -21,7 +21,7 @@ echo "#!/bin/bash
 #SBATCH -N 1
 #SBATCH --partition=bmh
 #SBATCH --mem=128GB 
-#SBATCH --time=72:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=outputs/202/${pop}-%j.slurmout
 
 ##############################################
