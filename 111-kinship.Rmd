@@ -59,7 +59,7 @@ rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta) %>%
   write_csv("outputs/111/kin.csv")
 
 rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta) %>% 
-  filter(rab>0.5)
+  filter(rab>0.15)
 ```
 
 
@@ -136,18 +136,98 @@ srun -p bmh -t 16:00:00 --mem=32G --nodes=1 --cpus-per-task=6  $HOME/angsd/angsd
 -GL 2 -doMajorMinor 1 -doMaf 1 -snp_pval 1e-6 -minMaf 0.05 -doGlf 3 \
 -out outputs/111/kin-dup > outputs/111/kin-dup.out 2> outputs/111/kin-dup.err &
 
-#	-> Number of sites retained after filtering: 1609596 
-#	[ALL done] cpu-time used =  43680.16 sec
-#	[ALL done] walltime used =  24467.00 sec
-### Then we extract the frequency column from the allele frequency file and remove the header (to make it in the format NgsRelate needs)
+#        -> Number of sites retained after filtering: 1657786
+ #       [ALL done] cpu-time used =  89829.79 sec
+  #      [ALL done] walltime used =  48698.00 sec
 
 zcat outputs/111/kin-dup.mafs.gz | cut -f6 |sed 1d > outputs/111/freq-dup
 
 ### run NgsRelate
 module load ngsrelate/2.0     
-srun -p bmh -t 12:00:00 --mem=32G --nodes=1 --cpus-per-task=2 ngsRelate -g outputs/111/kin.glf.gz -n 50 -f outputs/111/freq-dup  -O outputs/111/kin-dup-res.tsv
+srun -p bmh -t 12:00:00 --mem=32G --nodes=1 --cpus-per-task=2 ngsRelate -g outputs/111/kin-dup.glf.gz -n 50 -f outputs/111/freq-dup  -O outputs/111/kin-dup-res.tsv
 
-#        [ALL done] cpu-time used =  4531.40 sec (filereading took: 7.68 sec)
-#        [ALL done] walltime used =  2299.00 sec (filereading took: 8.00 sec)
 
+
+```
+
+
+
+```{r}
+mkin<-read_csv("meta/kin.csv") %>% mutate(SampleID=1:n())
+mkin$SampleID<-mkin$SampleID-1
+mkin
+```
+
+```{r}
+rel<-read_tsv(file = "outputs/111/kin-dup-res.tsv") %>% left_join(mkin, by=c("a"="SampleID")) %>% 
+  rename(SampleNameA=specimen_id) %>%
+  left_join(mkin, by=c("b"="SampleID")) %>% 
+  rename(SampleNameB=specimen_id) %>% relocate(SampleNameA, SampleNameB)
+
+rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta) %>% 
+  write_csv("outputs/111/kin-dp.csv")
+
+rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta, Fa, Fb) %>% 
+  filter(rab>0.5)
+```
+
+
+```{r}
+cols<-viridis(6, alpha=0.75)
+```
+
+```{r}
+ggplot(rel)+geom_histogram(aes(x=rab), bins=50, fill="grey", color="grey") +
+  geom_vline(xintercept =.50, col=cols[1]) + #Parent offspring/full sibs
+  geom_vline(xintercept =.25, col=cols[2]) + #2nd degree half sib, grandparent, aunt/uncle, double first cousins
+  geom_vline(xintercept =.125, col=cols[3]) + # 3rd cousins
+  geom_vline(xintercept = .0625, col=cols[4]) + 
+  geom_vline(xintercept = .03125, col=cols[5]) +
+  geom_vline(xintercept = 0.0, col=cols[6]) +
+  scale_x_continuous(breaks=c(0,.03125, .0625, .125, .25, .5),
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust=1, angle=45)) +
+  theme(panel.grid=element_blank()) +
+  ylab("Count") +
+  xlab("Pairwise Relatedness") 
+```
+
+```{r}
+rel %>% filter(theta > 0.125) %>% select(SampleNameA, SampleNameB, theta)
+
+```
+
+
+```{r}
+ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
+  geom_vline(xintercept =.25, col=cols[1]) + #Parent offspring/full sibs
+  geom_vline(xintercept =.125, col=cols[2]) + #2nd degree
+  geom_vline(xintercept =.0625, col=cols[3]) + # 3rd
+  geom_vline(xintercept = .0313, col=cols[4]) +
+  geom_vline(xintercept = .0156, col=cols[5]) +
+  geom_vline(xintercept = 0.0, col=cols[6]) +
+  scale_x_continuous(breaks=c(0,0.0156, 0.0313, 0.0625, 0.125, 0.25),
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust=1, angle=45)) +
+  theme(panel.grid=element_blank()) +
+  ylab("Count") +
+  xlab("Kinship Coefficient")
+```
+
+
+```{r}
+rel %>% filter(theta > .125) %>% select(SampleNameA, SampleNameB, theta, Fa, Fb)
+```
+
+SFLc0427	SFLc0428	0.141781	0.000000
+SFLc0435	SFLc0650	0.196559  0e+00
+
+```{r}
+a<-rel %>% select(SampleNameA, Fa) %>% rename(Sample=SampleNameA, F=Fa)
+b<-rel %>% select(SampleNameB, Fb) %>% rename(Sample=SampleNameB, F=Fb)
+
+c<-bind_rows(a,b) %>% unique()
+c
 ```

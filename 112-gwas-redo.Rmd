@@ -1,0 +1,130 @@
+---
+title: "112-gwas-redo"
+output: html_document
+date: "2026-03-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+Following 
+
+https://cloufield.github.io/GWASTutorial/04_Data_QC/#table-of-contents
+
+and
+
+https://www.staff.ncl.ac.uk/heather.cordell/FASTLMM-2025.html
+
+
+We have a bunch of calls in plink and vcf format.
+```{sh, eval=FALSE}
+srun -t 4-24:00:00 -p high --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
+-minInd 42 -bam bamlists/44.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-rf meta/lates-lgs.txt -out outputs/104/snps-wgs-05-glf  \
+-minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
+-doGeno 2 -doPost 1 -postCutoff 0.95 -doPlink 2  > outputs/104/snps-wgs-05-glf.out 2> outputs/104/snps-wgs-05-glf.err &
+```
+
+
+Moving snps-wgs-05-glf.t* locally
+Moving plink-binary* locally
+ plink-binary-05.ped
+filtering heavily
+
+```{sh, eval=FALSE}
+plink \
+    --ped plink-binary-05.ped --map plink-binary-05.map \
+    --maf 0.05 \
+    --geno 0.05 \
+    --mind 0.05 \
+    --hwe 1e-6 \
+    --indep-pairwise 50kb 10 0.2 \
+    --out plink-pruned \
+    --allow-extra-chr --noweb
+    
+```
+
+0 variants removed due to missing genotype data (--geno).
+--hwe: 46441 variants removed due to Hardy-Weinberg exact test.
+14585 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+969724 variants and 44 people pass filters and QC.
+Pruning complete.  882827 of 969724 variants removed.
+
+
+F coefficient
+
+```{sh, eval=FALSE}
+plink \
+    --ped plink-binary-05.ped --map plink-binary-05.map \
+    --extract plink-pruned.prune.in \
+    --het \
+    --out plink_results \
+    --allow-extra-chr --noweb
+
+```
+
+30838 variants scanned, 
+
+awk 'NR>1 && $6>0.1 || $6<-0.1 {print $1,$2}' plink_results.het > high_het.sample
+
+```{r}
+f<-read_table("outputs/112/plink_results.het")
+
+ggplot(f) +
+  geom_histogram(aes(x=F))
+```
+
+
+outliers ?
+
+```{r}
+f %>% mutate(Mean=mean(F)) %>% mutate(StdDev=sd(F)) %>% mutate(Max=Mean+(3*StdDev)) %>%
+  mutate(Min=Mean - (3*StdDev)) %>% filter(F < Min)
+
+f %>% mutate(Mean=mean(F)) %>% mutate(StdDev=sd(F)) %>% mutate(Max=Mean+(3*StdDev)) %>%
+  mutate(Min=Mean - (3*StdDev)) %>% filter(F > Max)
+```
+
+/home/maccamp/barra-lh/data/bams/616673.sort.flt.bam
+616673 SFLc0427
+
+
+awk 'NR>1 && $6>0.228 || $6<-0.567 {print $1,$2}' plink_results.het > high_het.sample
+
+
+IBD
+```{sh, eval=FALSE}
+plink \
+    --ped plink-binary-05.ped --map plink-binary-05.map \
+    --extract plink-pruned.prune.in    \
+    --genome \
+    --out plink_results  \
+    --allow-extra-chr --noweb
+    
+```
+
+PI_HAT
+
+```{r}
+pi<-read_table("outputs/112/plink_results.genome")
+pi$PI_HAT
+```
+Now, to create a clean data set
+
+```{sh, eval=FALSE}
+plink \
+    --ped plink-binary-05.ped --map plink-binary-05.map \
+    --maf 0.2 \
+    --geno 0.05 \
+    --mind 0.05 \
+    --hwe 1e-6 \
+    --remove high_het.sample \
+    --keep-allele-order \
+    --make-bed \
+    --out sample_data.clean \
+    --allow-extra-chr --noweb
+```
+
+466267 variants and 43 people pass filters and QC.

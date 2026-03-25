@@ -1,0 +1,33 @@
+---
+title: "113-fst"
+output: html_document
+date: "2026-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+```
+
+We can also look at Fst windows
+
+SFLc0427	SFLc0428	0.139075		
+SFLc0435	SFLc0650	0.188466	
+
+Are related individuals
+
+Keeping SFLc0428 and SFLc0435 because they are higher coverage
+
+```{r}
+m44<-read_csv("meta/meta44.csv")
+m42<-m44 %>% filter(!specimen_id %in% c("SFLc0427","SFLc0650"))
+mig <- m42 %>% filter(NewPhenotype =="SFF")
+res <- m42 %>% filter(NewPhenotype =="SSS")
+```
+
+sample sizes are 21 & 21
+
+
+```{r}
+mig %>% select(Path) %>% write_tsv("bamlists/mig.bamlist", col_names = FALSE)
+res %>% select(Path) %>% write_tsv("bamlists/res.bamlist", col_names = FALSE)
+```

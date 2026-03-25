@@ -225,3 +225,5 @@ java -Xmx10g -jar snpEff.jar ASB_HGAPassembly_v1.99 -v
 #		'CYIF01000100.1'	5261392	Standard
 #		'CYIF01000063.1'	5084806	Standard
 #		'CYIF01000028.1'	5019418	Standard
+
+
