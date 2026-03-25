@@ -4,11 +4,11 @@
 #SBATCH ---partition=bmh
 
 mkdir outputs/202
-wc=$(wc -l poplists/poplist.txt | awk '{print $1}')
+wc=$(wc -l meta/poplist | awk '{print $1}')
 x=1
 while [ $x -le $wc ]
 do
-	string="sed -n ${x}p poplists/poplist.txt"
+	string="sed -n ${x}p meta/poplist"
 	str=$($string)
 
 	var=$(echo $str | awk -F"\t" '{print $1}')
@@ -33,7 +33,7 @@ mInd=\$((\${nInd}/2))
 #Getting sites together if needed, e.g. maccamp@farm:~/spineflower/0009$ cat selection.sites | perl -pe 's/_/:/g' > sites
 # doSaf 2 for inbred sites doSaf 1 here
 
-angsd -b poplists/${pop}.bamlist -anc genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna -rf genome/lates-lgs.txt  -out outputs/202/${pop} -uniqueOnly 1 -remove_bads 1 -only_proper_pairs 1 -baq 2 -GL 1 -doMajorMinor 1 -doMaf 1 -minInd $mInd -nind $nInd -minMapQ 10 -minQ 20 -doSaf 1 -nThreads 8 
+angsd -b bamlists/${pop}.bamlist -anc genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna -rf genome/lates-lgs.txt  -out outputs/202/${pop} -uniqueOnly 1 -remove_bads 1 -only_proper_pairs 1 -baq 2 -GL 1 -doMajorMinor 1 -doMaf 1 -minInd $mInd -nind $nInd -minMapQ 10 -minQ 20 -doSaf 1 -nThreads 8 
 realSFS outputs/202/${pop}.saf.idx > outputs/202/${pop}.sfs
 
 #Rscript 1000_scripts/plotSFS.R 0011/${pop}.sfs
