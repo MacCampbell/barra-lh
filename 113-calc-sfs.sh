@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH -o outputs/113/calc_sfs-%j.out
-#SBATCH -t 48:00
+#SBATCH --partition=bmh
+#SBATCH --time=24:00:00
 
 
 mkdir outputs/113
