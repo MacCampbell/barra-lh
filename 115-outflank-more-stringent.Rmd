@@ -1,0 +1,201 @@
+---
+title: "115-outflank-more-stringent"
+output: html_document
+date: "2026-03-31"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Originally I kept SFLc0428 and SFLc0435 because they are higher coverage
+
+SFLc0228, SFLc0427, SFLc0428, SFLc0356, SFLc0403 SFLc0398 are a potential family
+2 SSS 4 SFF fish 
+
+SFLc0435	SFLc0650
+are another
+1 SSS (0650) 1 SFF fish (0435)
+
+```{r}
+m44<-read_csv("meta/meta44.csv")
+m44 %>% filter(specimen_id %in% c("SFLc0228","SFLc0427","SFLc0428","SFLc0356","SFLc0403",
+                                  "SFLc0398")) %>% relocate(NewPhenotype)
+
+m44 %>% filter(specimen_id %in% c("SFLc0435","SFLc0650")) %>% relocate(NewPhenotype)
+
+```
+
+Now I can filter to keep sampleSizes,
+
+if we drop out kin, we end up 17 SFF and 20 SS (newphenotype), so we need to keep 2 SFF fish
+Keeping SFLc0435 and SFLc0356 based on highest coverage
+```{r}
+#m44 %>% filter(!specimen_id %in% c("SFLc0228", "SFLc0427", "SFLc0428", "SFLc0356", "SFLc0403","SFLc0435","SFLc0650")) 
+m38<-m44 %>% filter(!specimen_id %in% c("SFLc0228", "SFLc0427", "SFLc0428", "SFLc0403","SFLc0650","SFLc0398")) 
+
+mig <- m38 %>% filter(NewPhenotype =="SFF") #19
+res <- m38 %>% filter(NewPhenotype =="SSS") #19
+
+write_csv(m38,"meta/m38.csv")
+m38 %>% select(specimen_id) %>% write_tsv("bamlists/38.names", col_names = FALSE)
+m38 %>% select(Path) %>% write_tsv("bamlists/38.bamlist", col_names=FALSE)
+m38 %>% select(NewPheno) %>% write_tsv("bamlists/38.pheno",col_names = FALSE)
+```
+
+
+# Now to OutFlank
+
+```{r}
+chroms<-read_tsv("meta/lates-lgs-named.txt")
+chroms
+```
+
+Following https://baylab.github.io/MarineGenomics/week-7-fst-and-outlier-analysis.html#using-fst-to-find-outliers
+
+using outputs/105/renamed-05.vcf.gz, this is the file  of called snps from all our samples in the study
+
+```{sh, eval=FALSE}
+bcftools view outputs/105/renamed-05.vcf.gz -S bamlists/38.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/115/filt.vcf
+bgzip outputs/115/filt.vcf
+tabix outputs/115/filt.vcf.gz
+bcftools view -Ov -r NC_066833.1,NC_066856.1 outputs/115/filt.vcf.gz > outputs/115/twochroms.vcf
+```
+
+956959 snps
+```{r, eval=FALSE}
+#vcf.path<-"outputs/115/twochroms.vcf"
+vcf.path<-"outputs/115/filt.vcf.gz"
+
+data <- read.vcfR(vcf.path)
+save(data, file="outputs/115/data.rda")
+```
+
+```{r,eval=FALSE}
+geno <- extract.gt(data)
+save(geno, file="outputs/115/geno.rda")
+dim(geno)
+head(geno[,1:10])
+
+```
+
+```{r}
+load("outputs/115/data.rda")
+load("outputs/115/geno.rda")
+```
+
+
+```{r}
+G <- geno  #we are doing this because we will be running a lot of different things with G, and if we mess up we want to be able to go back to geno
+
+G[geno %in% c("0/0")] <- 0
+G[geno  %in% c("0/1")] <- 1
+G[geno %in% c("1/1")] <- 2
+G[is.na(G)] <- 9
+tG <- t(G)
+dim(tG)
+subgen<-tG
+```
+
+Don't need to subset
+```{r}
+fst <- MakeDiploidFSTMat(subgen,locusNames=1:ncol(subgen),popNames=m38$NewPhenotype)
+```
+
+```{r}
+head(fst)
+hist(fst$FST,breaks=50)
+
+```
+```{r}
+summary(fst$FST) #highest FST is higher than the mean (which is a good sign)
+```
+
+Looking for low H2, high FST loci
+````{r}
+plot(fst$He, fst$FST)
+
+```
+
+Once we’ve calculated Fst between the two populations for each SNP individually, we want to determine whether some SNPs are statistical outliers - that is, more differentiated than we would expect. OutFLANK does this by fitting a Chi-Squared distribution to the data and looking to see if the tails of the Chi-Squared distribution have more SNPs than expected:
+
+Suggested values are 0.05 not 0.01 for right and left Trim increasing snps from 28 to 30
+Hm is 0.05, moving to 0.10, snps from 28 to 30
+Number of samples - mumber of spatial locaitons? setting to two
+```{r}
+OF <- OutFLANK(fst,LeftTrimFraction=0.01,RightTrimFraction=0.01,
+         Hmin=0.1,NumberOfSamples=2,qthreshold=0.01)
+OutFLANKResultsPlotter(OF,withOutliers=T,
+                       NoCorr=T,Hmin=0.1,binwidth=0.005,
+                       Zoom=F,RightZoomFraction=0.05,titletext=NULL)
+```
+
+```{r}
+P1 <- pOutlierFinderChiSqNoCorr(fst,Fstbar=OF$FSTNoCorrbar,
+                                dfInferred=OF$dfInferred,qthreshold=0.05,Hmin=0.1)
+outliers <- P1$OutlierFlag==TRUE #which of the SNPs are outliers?
+table(outliers)
+
+```
+
+```{r}
+plot(P1$LocusName,P1$FST,xlab="Position",ylab="FST",col=rgb(0,0,0,alpha=0.1))
+points(P1$LocusName[outliers],P1$FST[outliers],col="magenta")
+```
+
+Making a plot based on chroms
+```{r}
+snpmeta<-data@fix %>% as_tibble() %>% mutate(LocusName=1:n())
+p2<-P1 %>% left_join(snpmeta) %>% arrange(CHROM)
+outs<-p2 %>% filter(OutlierFlag==TRUE)
+
+write_csv(p2, file="outputs/115/outflank.csv")
+write_csv(outs, file="outputs/115/outflank-outs.csv")
+labels<-p2 %>% group_by(CHROM) %>% summarize(Min=min(LocusName), Max=max(LocusName)) %>% mutate(Mid=(Min+Max)/2) %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% mutate(Steps=lag(Max))
+```
+
+```{R}
+nb.cols <- nrow(labels)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+
+```
+
+```{r}
+ggplot(p2 %>% filter(FST >0)) +
+  geom_rect(data=labels, aes(xmin=Min, xmax=Max), ymin=0, ymax=0.55, fill=mycolors, alpha=0.25) +
+  geom_point(aes(x=LocusName, y=FST, color=CHROM), alpha=0.5) +
+  geom_point(data=outs, aes(x=LocusName, y=FST), fill="black") +
+  theme_bw() +
+  #geom_hline(yintercept = min(outs$FST), alpha=0.5) +
+  #geom_vline(xintercept = labels$Steps) +
+  theme(panel.grid=element_blank()) +
+  scale_x_continuous(breaks=labels$Mid, labels = labels$Chrom) +
+  theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+  xlab("") +
+  ylab("Fst\n") +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  theme(axis.title.y = element_text(face="bold", size=14))
+
+
+ggsave("outputs/115/fst-outlier-plot.jpeg", width=10, height=6)
+```
+
+
+```{r}
+outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+```
+
+```{r}
+outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count)
+```
+
+# GWAS
+
+```{sh, eval=FALSE}
+srun -t 72:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/38.pheno -GL 1 -minInd 36 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/115/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/115/combined-asso.out 2> outputs/115/combined-asso.err &
+```

@@ -22,9 +22,13 @@ m44<-read_csv("meta/meta44.csv")
 m42<-m44 %>% filter(!specimen_id %in% c("SFLc0427","SFLc0650"))
 mig <- m42 %>% filter(NewPhenotype =="SFF")
 res <- m42 %>% filter(NewPhenotype =="SSS")
+m42 %>% select(specimen_id) %>% write_tsv("bamlists/42.names", col_names = FALSE)
+write_csv(m42, "meta/m42.csv")
+
+
 ```
 
-sample sizes are 21 & 21
+sample sizes are 21 & 21 with m42
 
 
 ```{r}
@@ -33,4 +37,81 @@ res %>% select(Path) %>% write_tsv("bamlists/res.bamlist", col_names = FALSE)
 ```
 
  bash 113-calc-sfs.sh 
+ 
+ actually hiad this written up previously, using 202.1-calc-sfs.sh
+ bash 202.1-calc-sfs.sh
+$ scontrol requeue <job_id>
+$ scontrol release <job_id>
+$ scancel <job_id>
 
+
+# With SNPR
+We have some called snps
+bcftools reheader --samples bamlists/44.names -o outputs/104/renamed-05.vcf.gz outputs/104/plink-05.vcf.gz
+
+bcftools +fill-tags outputs/104/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' |  bcftools +prune -m 0.20 -w 50kb --nsites-per-win 1 --nsites-per-win-mode rand  > outputs/104/pruned-05.vcf
+```{sh}
+bcftools view outputs/104/renamed-05.vcf.gz -S bamlists/42.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/113/filt.vcf
+bgzip outputs/113/filt.vcf
+tabix outputs/113/filt.vcf.gz
+bcftools view -Ov -r NC_066833.1,NC_066856.1 outputs/113/filt.vcf.gz > outputs/113/twochroms.vcf
+```
+
+996731 variants at maf05, the complete thing is too big for my current SNPr setup
+Error: C stack usage 21536065 is too close to the limit
+```{r, eval=FALSE}
+#snps<-import.snpR.data("outputs/113/filt.vcf.gz", sample.meta = dplyr::select(m42,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+
+snps<-import.snpR.data("outputs/113/twochroms.vcf", sample.meta = dplyr::select(m42,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+
+snps@snp.meta$CHROM<-gsub("\\.1","",snps@snp.meta$CHROM)
+p<-plot_clusters(snps, "NewPhenotype")
+p$plots$pca
+
+x<-calc_association(snps, response = "NewPheno", method = "chisq")
+y<-get.snpR.stats(x, stats="association")
+
+
+plot_manhattan(x, "chi_p_NewPheno", chr = "CHROM",
+               log.p = TRUE)$plot
+
+ggsave("outputs/104/snp-r-manhattan.jpeg")
+```
+
+```{r, eval=FALSE}
+y$single %>% mutate(Position=1:n()) %>% group_by(CHROM) %>%  mutate(BHfdr = p.adjust(chi_p_NewPheno, method = "BH")) %>% arrange(BHfdr) %>% write_csv("outputs/104/snpr-gwas-results.csv")
+```
+
+
+sliding window fst
+
+```{r}
+fst<-calc_pairwise_fst(snps, facets="CHROM.NewPheno", method="wc")
+fsts<-get.snpR.stats(fst, facets = "CHROM.NewPheno", stats = "fst")
+```
+
+```{r}
+ggplot(fsts$pairwise) +
+  geom_point(aes(x=position, y=fst))  +
+  facet_wrap(.~CHROM)
+```
+
+
+
+```{r}
+smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=50, step=20)
+smoothf<-get.snpR.stats(smooth, "CHROM.NewPheno", "pairwise.window") 
+```
+
+
+```{r}
+ggplot(smoothf) +
+  geom_point(aes(x=position, y=fst)) +
+  facet_wrap(.~snp.subfacet)
+```
+
+
+```{r}
+ggplot(smoothf) +
+  geom_boxplot(aes(y=fst))
+```

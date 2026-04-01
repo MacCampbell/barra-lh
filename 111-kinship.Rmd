@@ -107,6 +107,55 @@ rel %>% filter(theta > 0.125) %>% select(SampleNameA, SampleNameB, theta)
 ```
 
 
+Pretty similar results with close actually
+SampleNameA SFLc0650 SFLc0428 SFLc0427 SFLc0403 SFLc0356 SFLc0398 SFLc0435 SFLc0228
+pivot_wider(close3, id_cols = SampleNameA, names_from = SampleNameB, values_from = theta)
+```{r}
+close<-rel %>% select(SampleNameA, SampleNameB, theta) %>% arrange(-theta)
+close2<-close %>% rename(b=SampleNameB, a=SampleNameA)
+close2<-close2 %>% rename(SampleNameA=b, SampleNameB=a)
+close3<-bind_rows(close,close2)
+```
+
+
+```{r}
+ggplot(close3) +
+  geom_tile(aes(x=SampleNameA, y=SampleNameB,fill=theta)) +
+  scale_fill_viridis_c()
+```
+
+```{r}
+dr<-pivot_wider(close3 %>% arrange(SampleNameA), id_cols = SampleNameA, names_from = SampleNameB, values_from = theta)
+rownames<-dr$SampleNameA     
+dr<-dr %>% select(-SampleNameA)
+#dr[is.na(dr)]<-1
+
+```
+
+```{r}
+annotation<-data.frame(sample=as.character(colnames(dr))) %>% column_to_rownames("sample")
+annotation$Phenotype<-m44$NewPhenotype
+annotationcolors=list(Phenotype=c(SFF="red",SSS="blue",UNK="grey75"))
+
+ggplotify::as.ggplot(pheatmap(as.matrix(dr), labels_row = rownames, cluster_rows = TRUE, fontsize_row = 6, fontsize_col = 6,
+                              annotation_col = annotation, annotation_colors =  annotationcolors ))
+
+ggsave("outputs/111/kinship-matrix.jpeg", width=11, height=8)
+```
+```{r}
+rel %>% filter(theta > 0.0625) %>% select(SampleNameA, SampleNameB, theta) %>% arrange(-theta)
+```
+SFLc0228, SFLc0427, SFLc0428, SFLc0356, SFLc0403, SFLc0398 are a potential family
+2 SSS 4 SFF fish 
+
+SFLc0435	SFLc0650
+are another
+```{r}
+a<-rel %>% filter(theta > 0.0625) %>% select(SampleNameA, SampleNameB, theta) %>% arrange(-theta) %>% select(SampleNameA)
+b<-rel %>% filter(theta > 0.0625) %>% select(SampleNameA, SampleNameB, theta) %>% arrange(-theta) %>% select(SampleNameB)
+unique(c(a$SampleNameA, b$SampleNameB))
+```
+
 ## Let's make some clones and see if that fixes this
 SFLc0096 614649
 SFLc0312 614660
@@ -171,13 +220,18 @@ rel %>% arrange(-theta) %>% select(SampleNameA, SampleNameB, rab, theta, Fa, Fb)
   filter(rab>0.5)
 ```
 
+```{r}
+rel2 <- rel %>% filter(! SampleNameA %in% c("Dup1","Dup2","Dup3","Comb12","Comb13","Comb23"))
+rel2 <- rel2 %>% filter(! SampleNameB %in% c("Dup1","Dup2","Dup3","Comb12","Comb13","Comb23"))
+
+```
 
 ```{r}
 cols<-viridis(6, alpha=0.75)
 ```
 
 ```{r}
-ggplot(rel)+geom_histogram(aes(x=rab), bins=50, fill="grey", color="grey") +
+ggplot(rel2)+geom_histogram(aes(x=rab), bins=50, fill="grey", color="grey") +
   geom_vline(xintercept =.50, col=cols[1]) + #Parent offspring/full sibs
   geom_vline(xintercept =.25, col=cols[2]) + #2nd degree half sib, grandparent, aunt/uncle, double first cousins
   geom_vline(xintercept =.125, col=cols[3]) + # 3rd cousins
@@ -200,7 +254,7 @@ rel %>% filter(theta > 0.125) %>% select(SampleNameA, SampleNameB, theta)
 
 
 ```{r}
-ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
+ggplot(rel2)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
   geom_vline(xintercept =.25, col=cols[1]) + #Parent offspring/full sibs
   geom_vline(xintercept =.125, col=cols[2]) + #2nd degree
   geom_vline(xintercept =.0625, col=cols[3]) + # 3rd
@@ -208,17 +262,19 @@ ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
   geom_vline(xintercept = .0156, col=cols[5]) +
   geom_vline(xintercept = 0.0, col=cols[6]) +
   scale_x_continuous(breaks=c(0,0.0156, 0.0313, 0.0625, 0.125, 0.25),
-                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg."), limits = c(0,.5)) +
   theme_bw() +
   theme(axis.text.x = element_text(hjust=1, angle=45)) +
   theme(panel.grid=element_blank()) +
-  ylab("Count") +
-  xlab("Kinship Coefficient")
+  ylab("Count\n") +
+  xlab("\nKinship Coefficient") 
+
+ggsave("outputs/111/kinship-coefficient.jpeg")
 ```
 
 
 ```{r}
-rel %>% filter(theta > .125) %>% select(SampleNameA, SampleNameB, theta, Fa, Fb)
+rel2 %>% filter(theta > .125) %>% select(SampleNameA, SampleNameB, theta, Fa, Fb)
 ```
 
 SFLc0427	SFLc0428	0.141781	0.000000

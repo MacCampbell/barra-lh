@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
 ```{r}
 library(tidyverse)
 library(pcadapt)
+library(pheatmap)
+library(ggplotify)
 library(RColorBrewer)
 library(snpR)
 ```
@@ -457,15 +459,17 @@ First, lets select the chrom of interest
 ```{sh, eval=FALSE}
 bcftools view -Ov -r NC_066856.1 outputs/104/renamed-05.vcf.gz | bcftools view -i 'INFO/MAF > 0.10'  > outputs/104/lca24.vcf
 bcftools view -Ov  outputs/104/renamed-05.vcf.gz | bcftools view -i 'INFO/MAF > 0.10' | bcftools view -i 'INFO/MAF < 0.45'  > outputs/104/renamed-10.vcf
+bcftools view -Ov -r NC_066856.1 outputs/104/renamed-05.vcf.gz | bcftools view -i 'INFO/MAF > 0.05'  > outputs/104/lca24-05.vcf
 
 ```
 
 renamed 10 has 665077 variants
-
+outputs/104/pruned-10.vcf
 ```{r, eval=FALSE}
-#snps<-import.snpR.data("outputs/104/lca24.vcf", sample.meta = select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
-snps<-import.snpR.data("outputs/104/renamed-10.vcf", sample.meta = dplyr::select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+snps<-import.snpR.data("outputs/104/lca24-05.vcf", sample.meta = dplyr::select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+#snps<-import.snpR.data("outputs/104/renamed-10.vcf", sample.meta = dplyr::select(m44,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
 
+snps@snp.meta$CHROM<-gsub("\\.1","",snps@snp.meta$CHROM)
 p<-plot_clusters(snps, "NewPhenotype")
 p$plots$pca
 
@@ -482,6 +486,31 @@ ggsave("outputs/104/snp-r-manhattan.jpeg")
 
 ```{r, eval=FALSE}
 y$single %>% mutate(Position=1:n()) %>% group_by(CHROM) %>%  mutate(BHfdr = p.adjust(chi_p_NewPheno, method = "BH")) %>% arrange(BHfdr) %>% write_csv("outputs/104/snpr-gwas-results.csv")
+```
+
+
+sliding window fst
+
+```{r}
+fst<-calc_pairwise_fst(snps, facets="CHROM.NewPheno", method="wc")
+fsts<-get.snpR.stats(fst, facets = "CHROM.NewPheno", stats = "fst")
+```
+
+```{r}
+ggplot(fsts$pairwise) +
+  geom_point(aes(x=position, y=fst))  +
+  facet_wrap(.~CHROM)
+```
+
+```{r}
+smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=50, step=20)
+smoothf<-get.snpR.stats(smooth, "CHROM.NewPheno", "pairwise.window") 
+```
+
+
+```{r}
+ggplot(smoothf) +
+  geom_point(aes(x=position, y=fst)) 
 ```
 
 Random Forest
