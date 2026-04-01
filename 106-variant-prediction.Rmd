@@ -145,7 +145,8 @@ ASB_HGAPassembly_v1.99.reference : ftp://ftp.ensembl.org/pub/release-99/gtf/
 ASB_HGAPassembly_v1.99.retrieval_date : 2020-01-28
 
 java -Xmx10g -jar snpEff.jar ASB_HGAPassembly_v1.99 ~/barra-lh/snps-to-annotate.vcf
-srun -p high -t 12:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GCF001640805.2 ~/barra-lh/snps-to-annotate.vcf > snps.ann.vcf
+
+srun -p bmh -t 02:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GCF001640805.2 ~/barra-lh/meta/snps-to-annotate.vcf > snps.ann.vcf
 
 
 ## Building locally in
