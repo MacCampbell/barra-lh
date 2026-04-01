@@ -122,9 +122,12 @@ Once we’ve calculated Fst between the two populations for each SNP individuall
 Suggested values are 0.05 not 0.01 for right and left Trim increasing snps from 28 to 30
 Hm is 0.05, moving to 0.10, snps from 28 to 30
 Number of samples - mumber of spatial locaitons? setting to two
+
+qthreshold of 0.05 and 0.01 return the same results.
+
 ```{r}
 OF <- OutFLANK(fst,LeftTrimFraction=0.01,RightTrimFraction=0.01,
-         Hmin=0.1,NumberOfSamples=2,qthreshold=0.01)
+         Hmin=0.1,NumberOfSamples=2,qthreshold=0.05)
 OutFLANKResultsPlotter(OF,withOutliers=T,
                        NoCorr=T,Hmin=0.1,binwidth=0.005,
                        Zoom=F,RightZoomFraction=0.05,titletext=NULL)
@@ -137,6 +140,8 @@ outliers <- P1$OutlierFlag==TRUE #which of the SNPs are outliers?
 table(outliers)
 
 ```
+
+887311
 
 ```{r}
 plot(P1$LocusName,P1$FST,xlab="Position",ylab="FST",col=rgb(0,0,0,alpha=0.1))
@@ -178,7 +183,9 @@ ggplot(p2 %>% filter(FST >0)) +
   theme(axis.title.y = element_text(face="bold", size=14))
 
 
-ggsave("outputs/115/fst-outlier-plot.jpeg", width=10, height=6)
+ggsave("outputs/115/fst-outlier-plot.jpeg", width=8, height=5)
+ggsave("outputs/115/fst-outlier-plot.pdf", width=8, height=5)
+
 ```
 
 
@@ -187,9 +194,15 @@ outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, 
 ```
 
 ```{r}
-outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count)
+outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count, -FST)
+```
+```{r}
+outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO)
 ```
 
+```{r}
+outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO) %>% filter(CHROM=="NC_066856.1") %>% arrange(-FST) %>% write_csv("outputs/115/top-outs-24.csv")
+```
 # GWAS
 
 ```{sh, eval=FALSE}
@@ -197,5 +210,5 @@ srun -t 72:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=
  -doAsso 1 -yBin $HOME/barra-lh/bamlists/38.pheno -GL 1 -minInd 36 -minMaf 0.10 \
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/115/combined-asso-95 \
- -bam $HOME/barra-lh/bamlists/44.bamlist  > outputs/115/combined-asso.out 2> outputs/115/combined-asso.err &
+ -bam $HOME/barra-lh/bamlists/38.bamlist  > outputs/115/combined-asso.out 2> outputs/115/combined-asso.err &
 ```
