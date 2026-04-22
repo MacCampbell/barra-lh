@@ -1,0 +1,382 @@
+---
+title: "117-pike-dapc"
+output: html_document
+date: "2026-04-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(adegenet)
+library(dartR)
+library(vcfR)
+library(tidyverse)
+```
+
+Separating fish with DAPC (using pruned loci at first, then we can use unpruned?)
+```{sh, eval=FALSE}
+
+grep CR vcf-meta.tsv | cut -f 1 > chat.tsv
+bcftools view -S chat.tsv Eluc.variants.GATK.iteration.2.b.Full.SNP.GATK_HF_removed.minQ20.mmdp10.mxmdp60.mmc10.mac1.homsumfilt.new.samp.names.recode.vcf.gz | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > chat.vcf
+
+grep "S" vcf-meta.tsv  > s-meta.tsv
+grep "S" vcf-meta.tsv | grep -v Sample | cut -f 1 > s-samples.txt
+bcftools view -S s-samples.txt Eluc.variants.GATK.iteration.2.b.Full.SNP.GATK_HF_removed.minQ20.mmdp10.mxmdp60.mmc10.mac1.homsumfilt.new.samp.names.recode.vcf.gz | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > s.vcf
+
+bcftools view -S east.tsv Eluc.variants.GATK.iteration.2.b.Full.SNP.GATK_HF_removed.minQ20.mmdp10.mxmdp60.mmc10.mac1.homsumfilt.new.samp.names.recode.vcf.gz | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > east.vcf
+
+#thinned version in outputs/117
+cat filtered.vcf | grep "#" > header.txt 
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%100==0) print}' > t100-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%50==0) print}' > t50-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%20==0) print}' > t20-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%10==0) print}' > t10-05.vcf
+
+cat header.txt t20-05.vcf > thinned20.vcf
+cat header.txt t10-05.vcf > thinned10.vcf
+
+
+bcftools view -r NC_066856.1  outputs/105/renamed-05.vcf.gz | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > outputs/117/NC_066856.1.vcf
+```
+
+```{r, eval=FALSE}
+d<-read.vcfR("/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/Eluc.variants.GATK.iteration.2.b.Full.SNP.GATK_HF_removed.minQ20.mmdp10.mxmdp60.mmc10.mac1.homsumfilt.new.samp.names.recode.vcf.gz")
+
+obj<-vcfR2genlight(d)
+save(obj, file="/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/obj.rda")
+```
+
+```{r, eval=TRUE}
+d<-read.vcfR("/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/chat.vcf")
+
+obj<-vcfR2genlight(d)
+```
+
+```{r}
+meta<-read_tsv("/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/vcf-meta.tsv")
+meta
+```
+
+```{r}
+obj@ind.names
+```
+
+
+# DAPC with sex, Chat
+
+```{r}
+chat<-meta %>% filter(Pop=="CR")
+obj2<-obj[obj@ind.names %in% chat$Sample,]
+```
+
+```{r}
+dapc<-dapc(obj2, as.factor(chat$Sex), n.pca = 40, n.da = 1)
+```
+
+```{r}
+scatter(dapc)
+```
+
+Let's make a plot of assignments
+
+
+```{r}
+chat$Assign<-dapc$assign
+male<-dapc$posterior[,1] %>% as_tibble() %>% rename(F=value)
+female<-dapc$posterior[,2] %>% as_tibble() %>% rename(M=value)
+
+bm<-bind_cols(chat,male,female)
+``` 
+
+```{r}
+b2<-bm %>% dplyr::select(Sample, Pop, Sex, Assign, 'F', M ) %>% arrange(Sex,-F) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(6:7, names_to = "AssignedSex", values_to = "Posterior")
+
+labels<-b2 %>% group_by(Sex) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+
+ticks<-b2 %>% select(Index, Sample,Sex) %>% unique()
+```
+
+
+```{r}
+ggplot(b2) +
+  geom_col(aes(x=Index, y=Posterior, fill=AssignedSex), width=1, alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=1) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=1) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Female","Male")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$Sample) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(panel.background = element_blank()) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold")) +
+  geom_text(data=labels, aes(x=Position), label=c("Phenotypic Females","Phenotypic Males"), y=1.04, size=3) +
+  ylim(0,1.03)
+  
+ggsave("outputs/117/posterior-assignment-dapc.jpeg", width=9, height=4)
+ggsave("outputs/117/posterior-assignment-dapc.pdf", width=9, height=4)
+
+```
+Get sites with the most loadings:
+```{r}
+contrib <- loadingplot(dapc$var.contr, axis=1,
+thres=.002, lab.jitter=0)
+
+contribs<-as.tibble(dapc$var.contr)
+contribs$Chromosome<-obj2@chromosome
+contribs$Position<-obj2@position
+contribs<-mutate(contribs, number=1:n())
+
+```
+```{r}
+topfrac<-top_frac(contribs, n=.0001, LD1)
+topfrac %>% arrange(-LD1)
+
+write_csv(topfrac, "outputs/117/loadings.csv")
+```
+
+# DAPC with sex, S
+
+```{r, eval=TRUE}
+d<-read.vcfR("/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/s.vcf")
+
+obj<-vcfR2genlight(d)
+```
+
+```{r}
+s<-meta %>% filter(Pop=="S")
+obj2<-obj[obj@ind.names %in% s$Sample,]
+```
+
+```{r}
+dapc<-dapc(obj2, as.factor(s$Sex), n.pca = 40, n.da = 1)
+```
+
+```{r}
+scatter(dapc)
+```
+
+Let's make a plot of assignments
+
+
+```{r}
+s$Assign<-dapc$assign
+male<-dapc$posterior[,1] %>% as_tibble() %>% rename(F=value)
+female<-dapc$posterior[,2] %>% as_tibble() %>% rename(M=value)
+
+bm<-bind_cols(s,male,female)
+``` 
+
+```{r}
+b2<-bm %>% dplyr::select(Sample, Pop, Sex, Assign, 'F', M ) %>% arrange(Sex,-F) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(6:7, names_to = "AssignedSex", values_to = "Posterior")
+
+labels<-b2 %>% group_by(Sex) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+
+ticks<-b2 %>% select(Index, Sample,Sex) %>% unique()
+```
+
+
+```{r}
+ggplot(b2) +
+  geom_col(aes(x=Index, y=Posterior, fill=AssignedSex), width=1, alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=1) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=1) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Female","Male")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$Sample) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(panel.background = element_blank()) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold")) +
+  geom_text(data=labels, aes(x=Position), label=c("Phenotypic Females","Phenotypic Males"), y=1.04, size=3) +
+  ylim(0,1.03)
+  
+ggsave("outputs/117/posterior-assignment-dapc-s.jpeg", width=9, height=4)
+ggsave("outputs/117/posterior-assignment-dap-s.pdf", width=9, height=4)
+
+```
+Get sites with the most loadings:
+```{r}
+contrib <- loadingplot(dapc$var.contr, axis=1,
+thres=.002, lab.jitter=0)
+
+contribs<-as.tibble(dapc$var.contr)
+contribs$Chromosome<-obj2@chromosome
+contribs$Position<-obj2@position
+contribs<-mutate(contribs, number=1:n())
+
+```
+```{r}
+topfrac<-top_frac(contribs, n=.001, LD1)
+topfrac %>% arrange(-LD1)
+
+write_csv(topfrac, "outputs/117/loadings-s.csv")
+```
+
+# DAPC with sex, SLA, WHI HCK
+
+```{r, eval=TRUE}
+d<-read.vcfR("/Users/mac/Dropbox/ak-pike-genomics/christensen-et-al/east.vcf")
+
+obj<-vcfR2genlight(d)
+```
+
+```{r}
+s<-meta %>% filter(Pop %in% c("S","NJ","Mb"))
+obj2<-obj[obj@ind.names %in% s$Sample,]
+```
+
+```{r}
+dapc<-dapc(obj2, as.factor(s$Sex), n.pca = 40, n.da = 1)
+```
+
+```{r}
+scatter(dapc)
+```
+
+Let's make a plot of assignments
+
+
+```{r}
+s$Assign<-dapc$assign
+male<-dapc$posterior[,1] %>% as_tibble() %>% rename(F=value)
+female<-dapc$posterior[,2] %>% as_tibble() %>% rename(M=value)
+
+bm<-bind_cols(s,male,female)
+``` 
+
+```{r}
+b2<-bm %>% dplyr::select(Sample, Pop, Sex, Assign, 'F', M ) %>% arrange(Sex,-F) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(6:7, names_to = "AssignedSex", values_to = "Posterior")
+
+labels<-b2 %>% group_by(Sex) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+
+ticks<-b2 %>% select(Index, Sample,Sex) %>% unique()
+```
+
+
+```{r}
+ggplot(b2) +
+  geom_col(aes(x=Index, y=Posterior, fill=AssignedSex), width=1, alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=1) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=1) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=1) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Female","Male")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$Sample) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(panel.background = element_blank()) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold")) +
+  geom_text(data=labels, aes(x=Position), label=c("Phenotypic Females","Phenotypic Males"), y=1.04, size=3) +
+  ylim(0,1.03)
+  
+ggsave("outputs/117/posterior-assignment-dapc-east.jpeg", width=9, height=4)
+ggsave("outputs/117/posterior-assignment-dap-east.pdf", width=9, height=4)
+
+```
+Get sites with the most loadings:
+```{r}
+contrib <- loadingplot(dapc$var.contr, axis=1,
+thres=.002, lab.jitter=0)
+
+contribs<-as.tibble(dapc$var.contr)
+contribs$Chromosome<-obj2@chromosome
+contribs$Position<-obj2@position
+contribs<-mutate(contribs, number=1:n())
+
+```
+```{r}
+topfrac<-top_frac(contribs, n=.0001, LD1)
+topfrac %>% arrange(-LD1)
+
+write_csv(topfrac, "outputs/117/loadings-east.csv")
+```
+
+
+Train on half and then assign.
+
+```{r}
+east<-meta %>% filter(Pop %in% c("S","NJ","Mb")) 
+train<-east %>% group_by(Sex) %>% slice_sample(n=5) %>% ungroup()
+test<-east %>% filter(!Sample %in% sub$Sample)
+```
+
+```{r}
+ot<-obj[obj@ind.names %in% train$Sample,]
+otest<-obj[obj@ind.names %in% test$Sample,]
+```
+
+```{r}
+dapc<-dapc(ot, as.factor(train$Sex), n.pca = 9, n.da = 1)
+```
+
+```{r}
+scatter(dapc)
+```
+
+Now to assign
+
+# predict.dapc
+```{r}
+assign<-predict.dapc(object = dapc, obj, dapc$prior)
+```
+
+```{r}
+post<-assign$posterior %>% as_tibble()
+post<-bind_cols(east,post) %>% arrange(Pop, Sex) %>% mutate(Index=1:n())
+post<-post %>% select(Index, Pop, Sample, Sex, "F",M) %>% pivot_longer(5:6, names_to = "Predicted", values_to = "Posterior")
+
+
+labels<-post %>% group_by(Pop, Sex) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+ticks<-post %>% select(Index, Sample,Sex) %>% unique()
+
+```
+
+```{r}
+ggplot(post) +
+  geom_col(aes(x=Index, y=Posterior, fill=Predicted), width = 1, alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=2) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=2) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=2) +
+  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=2) +
+   theme_bw() +
+  theme(panel.background = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Female","Male")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$Sample) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold"))  +
+  geom_text(data=labels, aes(x=Position), label=labels$Sex, y=1.03, size=3, angle=0) +
+  ylim(0,1.03)
+
+ggsave("outputs/117/dapc-assignments-east.pdf", width=12, height = 6)
+```

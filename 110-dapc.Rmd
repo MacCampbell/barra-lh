@@ -18,17 +18,43 @@ library(tidyverse)
 Separating fish with DAPC (using pruned loci at first, then we can use unpruned?)
 ```{sh, eval=FALSE}
 bcftools +fill-tags outputs/105/renamed-05.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > outputs/110/filtered.vcf
+#thinned version in outputs/110
+cat filtered.vcf | grep "#" > header.txt 
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%100==0) print}' > t100-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%50==0) print}' > t50-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%20==0) print}' > t20-05.vcf
+cat filtered.vcf | grep -v "#" | awk 'BEGIN{i=0}{i++;if (i%10==0) print}' > t10-05.vcf
+
+cat header.txt t20-05.vcf > thinned20.vcf
+cat header.txt t10-05.vcf > thinned10.vcf
+
+
+bcftools view -r NC_066856.1  outputs/105/renamed-05.vcf.gz | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.10' > outputs/110/NC_066856.1.vcf
 ```
 
 ```{r}
 d<-read.vcfR("outputs/105/pruned-05-max.vcf.gz")
-#d<-read.vcfR("outputs/110/filtered.vcf")
+#d<-read.vcfR("outputs/110/NC_066856.1.vcf")
+#d<-read.vcfR("outputs/110/thinned10.vcf")
 obj<-vcfR2genlight(d)
 ```
+Pruned has 10752 snps
+thinned 20 has 42848
+thinned 10 has 85696
 
 ```{r}
 mq<-read_csv(file="meta/mq.csv")
-bm<-mq %>% filter(Group=="Burdekin")
+
+mq$Group<-gsub("Burdekin","Burdekin Region",mq$Group)
+mq$Group<-gsub("FitzroyQLD","Fitzroy River",mq$Group)
+mq$Group<-factor(mq$Group, levels=c("Daly River","Roper River","Burdekin Region","Fitzroy River"))
+mq<-mq %>% mutate(PlotPheno=ifelse(Group == "Burdekin Region",NewPhenotype, ifelse(Group=="Daly River", "Daly River Migratory","Unknown")))
+mq$PlotPheno<-gsub("SFF","Burdekin Region Migratory",mq$PlotPheno)
+mq$PlotPheno<-gsub("SSS","Burdekin Region Resident",mq$PlotPheno)
+
+#Get those filtered individuals for kinship
+m38<-read_csv("meta/m38.csv")
+bm<-mq %>% filter(specimen_id %in% m38$specimen_id)
 ```
 
 ```{r}
@@ -42,14 +68,27 @@ strongly supports K=2
 find.clusters(obj, n.pca = 70, n.clust=4)
 ```
 
-# DAPC with just burdekin
+# DAPC with Burdekin training set
 
-```{r}
-obj2<-obj[obj@ind.names %in% bm$specimen_id,]
+Trying a subset and all the samples 
+```{r, eval=FALSE}
+trainm<-bm  #%>% group_by(NewPhenotype) %>% slice_sample(n=15) %>% ungroup()
+trainm %>% write_csv("outputs/110/train-meta.csv")
+testm<-bm %>% filter(! specimen_id %in% trainm$specimen_id)
+testm %>% write_csv("outputs/110/test-meta.csv")
 ```
 
 ```{r}
-dapc<-dapc(obj2, as.factor(bm$NewPhenotype), n.pca = 40, n.da = 1)
+trainm<-read_csv("outputs/110/train-meta.csv")
+testm<- read_csv("outputs/110/test-meta.csv")
+```
+
+```{r}
+obj2<-obj[obj@ind.names %in% trainm$specimen_id,]
+```
+
+```{r}
+dapc<-dapc(obj2, as.factor(trainm$NewPhenotype), n.pca = 35, n.da = 1)
 ```
 
 ```{r}
@@ -60,15 +99,15 @@ Let's make a plot of assignments
 
 
 ```{r}
-bm$Assign<-dapc$assign
+trainm$Assign<-dapc$assign
 sff<-dapc$posterior[,1] %>% as_tibble() %>% rename(SFF=value)
 sss<-dapc$posterior[,2] %>% as_tibble() %>% rename(SSS=value)
 
-bm<-bind_cols(bm,sff,sss)
+trainm<-bind_cols(trainm,sff,sss)
 ``` 
 
 ```{r}
-b2<-bm %>% select(specimen_id, NewPhenotype, Assign, SFF, SSS ) %>% arrange(NewPhenotype,-SFF) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(5:6, names_to = "AssignedClass", values_to = "Posterior")
+b2<-trainm %>% dplyr::select(specimen_id, NewPhenotype, Assign, SFF, SSS ) %>% arrange(NewPhenotype,-SFF) %>% mutate(Index=1:n()) %>% relocate(Index) %>% pivot_longer(5:6, names_to = "AssignedClass", values_to = "Posterior")
 
 labels<-b2 %>% group_by(NewPhenotype) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
 
@@ -77,14 +116,14 @@ ticks<-b2 %>% select(Index, specimen_id,NewPhenotype) %>% unique()
 
 
 ```{r}
-ggplot(b2) +
-  geom_col(aes(x=Index, y=Posterior, fill=AssignedClass), alpha=0.75) +
+panela<-ggplot(b2) +
+  geom_col(aes(x=Index, y=Posterior, fill=AssignedClass), width=1, alpha=0.75) +
   geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=1) +
   geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
                xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
                size=1) +
-  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=1, yend=1, alpha=0.9, size=1) +
-  geom_segment(x=0+0.4, xend= labels$Stop[length(labels$Stop)]+0.6, y=0, yend=0, alpha=0.9, size=1) +
+  geom_segment(x=0+0.45, xend= labels$Stop[length(labels$Stop)]+0.55, y=1, yend=1, alpha=0.9, size=1) +
+  geom_segment(x=0+0.45, xend= labels$Stop[length(labels$Stop)]+0.55, y=0, yend=0, alpha=0.9, size=1) +
   scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Migratory","Resident")) +
   ylab("Posterior Probability of Assignment\n") +
   xlab("\nIndividual") +
@@ -97,8 +136,10 @@ ggplot(b2) +
   theme(axis.title.x=element_text(size=12, face="bold")) +
   geom_text(data=labels, aes(x=Position), label=c("Migratory Otolith Chemistry","Resident Otolith Chemistry"), y=1.04, size=3) +
   ylim(0,1.03)
-  
+panela 
 ggsave("outputs/110/posterior-assignment-dapc.jpeg", width=9, height=4)
+ggsave("outputs/110/posterior-assignment-dapc.pdf", width=9, height=4)
+
 ```
 Get sites with the most loadings:
 ```{r}
@@ -114,55 +155,64 @@ contribs<-mutate(contribs, number=1:n())
 ```{r}
 topfrac<-top_frac(contribs, n=.001, LD1)
 topcons<-contribs %>% filter(LD1 > 0.002) %>% arrange(-LD1)
-topcons
+topfrac %>% arrange(-LD1)
 
-write_csv(topcons, "outputs/110/loadings.csv")
-```
-Compare to lrt scores
-
-```{r}
-lrt<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
-  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
-  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
-  group_by(Chromosome) %>%
-  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
-  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
-```
-
-```{r}
-lrt %>% filter(Position %in% topcons$Position) %>% arrange(Chromosome)
-```
-```{r}
-lrt %>% filter(Chromosome=="NC_066856.1") %>% filter(Position > 2992178-2e5) %>% 
-  filter(Position < 2992178+2e5) %>% 
-  arrange(-log10p)
-
-```
-
-filter to subset of things
-NC_066834.1_28780240
-```{r}
-sub<-read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(Site=paste0(Chromosome,"_",Position)) %>% filter(Site %in% obj2@loc.names) %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1))  %>%  filter(log10p != Inf) %>% filter(log10p>=0) %>% mutate(bonfer = p.adjust(p, method = "bonferroni")) 
-sub
-```
-
-```{r}
-sub %>% arrange(-log10p) %>% select(Chromosome, Position, LRT, log10p, p, bonfer)
+write_csv(topfrac, "outputs/110/loadings.csv")
 ```
 
 
-## GWAS with the one chrom
+# predict.dapc
 
+Using m38 fish and other places (not Burdekin)
 ```{r}
-lrt2<- read_tsv("outputs/104/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
-  filter(log10p != Inf) %>% filter(log10p>=0) %>% filter(Frequency>0.3) %>%
-  mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
-  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
-  group_by(Chromosome) %>%
-  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
-  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+#obj2<-obj[!obj@ind.names %in% trainm$specimen_id,]
+#assignm<-mq %>% filter(!specimen_id %in% trainm$specimen_id)
+offtargetburdekin<-mq %>% filter(Group=="Burdekin Region") %>% filter(!specimen_id %in% m38$specimen_id)
+
+assignm<-mq %>% filter(!specimen_id %in% offtargetburdekin$specimen_id)
+obj2<-obj[!obj@ind.names %in% offtargetburdekin$specimen_id,]
 ```
 
 ```{r}
-lrt2 %>% filter(BHfdrchrom <0.05)
+assign<-predict.dapc(object = dapc, obj2, method="plug-in")
+```
+
+```{r}
+post<-assign$posterior %>% as_tibble()
+#post<-bind_cols(mq,post) %>% arrange(Group, NewPhenotype,SSS) %>% mutate(Index=1:n())
+
+post<-bind_cols(assignm,post) %>% arrange(Group, NewPhenotype,SSS) %>% mutate(Index=1:n())
+post<-post %>% select(Index, Group, specimen_id, PlotPheno, SSS,SFF) %>% pivot_longer(5:6, names_to = "Predicted", values_to = "Posterior")
+
+
+labels<-post %>% group_by(Group, PlotPheno) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
+ticks<-post %>% select(Index, specimen_id, PlotPheno) %>% unique()
+
+```
+
+```{r}
+ggplot(post) +
+  geom_col(aes(x=Index, y=Posterior, fill=Predicted), width = 1, alpha=0.75) +
+  geom_segment(data=labels, x = labels$Start - 0.5, y=0, xend = labels$Start-0.5, yend=1, alpha=0.9,  size=2) +
+  geom_segment(data=labels, x = labels$Stop[length(labels$Stop)]  + 0.5, y=0, 
+               xend= labels$Stop[length(labels$Stop)] + 0.5, yend=1,  alpha=0.9,
+               size=2) +
+  geom_segment(x=0+0.3, xend= labels$Stop[length(labels$Stop)]+0.7, y=1, yend=1, alpha=0.9, size=2) +
+  geom_segment(x=0+0.3, xend= labels$Stop[length(labels$Stop)]+0.7, y=0, yend=0, alpha=0.9, size=2) +
+  theme_bw() +
+  theme(panel.background = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  scale_fill_manual(values=c("red","blue"), name="Genetic Assignment", labels=c("Migratory","Resident")) +
+  ylab("Posterior Probability of Assignment\n") +
+  xlab("\nIndividual") +
+  scale_x_continuous(breaks=ticks$Index, labels=ticks$specimen_id) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(axis.text.x = element_text(size=6)) +
+  theme(axis.text.y = element_text(size=8)) +
+  theme(axis.title.y=element_text(size=12, face="bold")) +
+  theme(axis.title.x=element_text(size=12, face="bold"))  +
+  geom_text(data=labels, aes(x=Position), label=labels$Group, y=1.03, size=3, angle=0) +
+  ylim(0,1.03)
+
+ggsave("outputs/110/dapc-assignments.pdf", width=12, height = 6)
 ```

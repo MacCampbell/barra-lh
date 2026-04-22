@@ -153,10 +153,10 @@ Making a plot based on chroms
 snpmeta<-data@fix %>% as_tibble() %>% mutate(LocusName=1:n())
 p2<-P1 %>% left_join(snpmeta) %>% arrange(CHROM)
 outs<-p2 %>% filter(OutlierFlag==TRUE)
-
-write_csv(p2, file="outputs/115/outflank.csv")
+write_csv(outs, file="outputs/115/outs.csv")
 write_csv(outs, file="outputs/115/outflank-outs.csv")
 labels<-p2 %>% group_by(CHROM) %>% summarize(Min=min(LocusName), Max=max(LocusName)) %>% mutate(Mid=(Min+Max)/2) %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% mutate(Steps=lag(Max))
+save(p2, file="outputs/115/outflank-results.rda")
 ```
 
 ```{R}
@@ -171,16 +171,16 @@ ggplot(p2 %>% filter(FST >0)) +
   geom_point(aes(x=LocusName, y=FST, color=CHROM), alpha=0.5) +
   geom_point(data=outs, aes(x=LocusName, y=FST), fill="black") +
   theme_bw() +
-  #geom_hline(yintercept = min(outs$FST), alpha=0.5) +
+  geom_hline(yintercept = min(outs$FST), alpha=0.5, lty=2) +
   #geom_vline(xintercept = labels$Steps) +
   theme(panel.grid=element_blank()) +
   scale_x_continuous(breaks=labels$Mid, labels = labels$Chrom) +
   theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
-  xlab("") +
+  xlab("\nChromosome") +
   ylab("Fst\n") +
   theme(legend.position = "none") +
   scale_color_manual(values=mycolors) +
-  theme(axis.title.y = element_text(face="bold", size=14))
+  theme(axis.title = element_text(face="bold", size=14))
 
 
 ggsave("outputs/115/fst-outlier-plot.jpeg", width=8, height=5)
@@ -197,7 +197,7 @@ outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, 
 outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count, -FST)
 ```
 ```{r}
-outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO)
+outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO) %>% select(CHROM, POS)
 ```
 
 ```{r}
@@ -211,4 +211,95 @@ srun -t 72:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=
  -minMapQ 20 -minQ 20 \
  -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/115/combined-asso-95 \
  -bam $HOME/barra-lh/bamlists/38.bamlist  > outputs/115/combined-asso.out 2> outputs/115/combined-asso.err &
+```
+
+_066837.1	5700344	A	C	0.171094	20.732746
+NC_066856.1	2996993	T	G	0.276176	21.228937
+NC_066856.1	2922339	G	A	0.316783	21.345727
+NC_066856.1	2992178	C	T	0.498508	21.931326
+NC_066856.1	2995063	T	C	0.473908	22.283522
+NC_066836.1	5304936	G	A	0.184339	22.583451
+NC_066856.1	2922305	C	T	0.326127	23.251738
+NC_066844.1	25539579	A	G	0.249469	23.596253
+NC_066856.1	3001384	A	C	0.496650	28.213501
+NC_066844.1	25539466	A	G	0.234164	30.348071
+
+
+
+
+```{r}
+lrt<- read_tsv("outputs/115/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+lrt  %>% arrange(bonfercrhom)  %>% dplyr::select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
+dd <- lrt %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
+
+```
+
+```{r}
+alpha<-0.05/nrow(lrt)
+alpha
+```
+
+```{r}
+Chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  dplyr::select(Chromosome,Chrom,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+gwas<-ggplot(dd) +
+  geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
+#  geom_hline(yintercept = 5, lty=2, alpha=0.9, size=.25) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+ # geom_point(data=ps, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  theme_bw() +
+  scale_x_continuous(breaks=Chroms$Position, labels=Chroms$Chrom) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=7)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors2) +
+#  ylab("-log10(p)\n") +
+  xlab("\nChromosome") +
+  labs(y=expression(paste("-", log[10],"(",italic(p),"-value)",sep=""))) +
+ #   ggtitle("Brackish Water Resident vs Catadromous GWAS") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(axis.title= element_text(size=14))+
+  theme(axis.text = element_text(size=10))
+
+
+gwas
+ggsave("outputs/115/SSS-SFF-38-inds-all-chroms-filtered-post.jpeg", width=6, height=3.5)
+ggsave("outputs/115/SSS-SFF-38-inds-all-chroms-filtered-post.pdf", width=6, height=3.5)
+
+```
+
+#Volcano Plot
+```{r}
+l<-lrt %>% mutate(ID=paste0(Chromosome, "_",Position))
+l2<-l %>% filter(ID %in% p2$ID)
+p3<-p2 %>% filter(ID %in% l$ID)
+```
+
+
+
+````{r}
+l3<-left_join(l2, p3) %>% mutate(Outlier = ifelse(ID %in% outs$ID, "Yes","No"))
+```
+
+```{r}
+ggplot(l3) +
+  geom_point(aes(x=FST, y=log10p, fill=Outlier), pch=21, alpha=.9) +
+  geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
+  #geom_vline(xintercept =  min(outs$FST), lty=1, alpha=0.95, size=0.25) +
+  theme_bw() +
+  theme(panel.grid=element_blank()) +
+  xlab("\nFst") +
+  ylab("-log10p-value") +
+  scale_fill_manual(values=c("grey50","purple")) +
+  scale_fill_discrete("Fst Outlier")
+
+ggsave("outputs/115/fst-logpvalue.jpeg")
 ```

@@ -212,4 +212,6 @@ pc12<-ggplot(covs) +
   theme(plot.title = element_text(hjust=0.5, face="bold"))
 
 pc12
+
+ggsave("outputs/100/pc12.jpeg")
 ```

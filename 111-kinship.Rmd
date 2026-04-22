@@ -85,22 +85,26 @@ ggplot(rel)+geom_histogram(aes(x=rab), bins=50, fill="grey", color="grey") +
 ```
 
 ```{r}
-ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="grey") +
+ggplot(rel)+geom_histogram(aes(x=theta), bins=50, fill="grey", color="black") +
   geom_vline(xintercept =.25, col=cols[1]) + #Parent offspring/full sibs
   geom_vline(xintercept =.125, col=cols[2]) + #2nd degree
   geom_vline(xintercept =.0625, col=cols[3]) + # 3rd
   geom_vline(xintercept = .0313, col=cols[4]) +
   geom_vline(xintercept = .0156, col=cols[5]) +
   geom_vline(xintercept = 0.0, col=cols[6]) +
-  scale_x_continuous(breaks=c(0,0.0156, 0.0313, 0.0625, 0.125, 0.25),
-                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.")) +
+  scale_x_continuous(breaks=c(0,0.0156, 0.0313, 0.0625, 0.125, 0.25,0.50),
+                     labels=c("0 / Unrelated","5th Deg.","4th Deg.","3rd Deg.", "2nd Deg.", "1st Deg.","0.5 / Identical"), limits=c(0,0.5)) +
   theme_bw() +
   theme(axis.text.x = element_text(hjust=1, angle=45)) +
   theme(panel.grid=element_blank()) +
-  ylab("Count") +
-  xlab("Kinship Coefficient")
+  ylab("Count\n") +
+  xlab("\nKinship Coefficient") +
+  theme(axis.title = element_text(size=12, face="bold"))
 ```
 
+````{r}
+rel %>% select(theta) %>% summarize(Median=median(theta))
+```
 
 ```{r}
 rel %>% filter(theta > 0.125) %>% select(SampleNameA, SampleNameB, theta)

@@ -5,25 +5,257 @@ date: "2026-04-01"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(tidyverse)
+library(pcadapt)
+library(grid)
+library(viridis)
+library(ggplotify)
+library(pheatmap)
+library(ggrepel)
+library(ggpubr)
+library(grid)
+library(raster)
+library(ozmaps)
+library(ggrepel)
+library(ggspatial)
 ```
 
-## Including Plots
+We have to cluster some stuff!
 
-You can also embed plots, for example:
+```{r}
+chroms<-read_tsv("meta/lates-lgs-named.txt")
+qld<-read_csv("meta/qld-fish.csv") %>% mutate(NewPhenotype=Phenotype) %>% filter(Group!="Mainstream")
+mq<-read_csv("~/github/barra-lh/meta/meta44.csv") %>% mutate(Group="Burdekin") %>% bind_rows(qld) %>% filter(Coverage > 8)
+mq$Group<-gsub("Burdekin","Burdekin Region",mq$Group)
+mq$Group<-gsub("FitzroyQLD","Fitzroy River",mq$Group)
+mq$Group<-factor(mq$Group, levels=c("Daly River","Roper River","Burdekin Region","Fitzroy River"))
+mq<-mq %>% mutate(PlotPheno=ifelse(Group == "Burdekin Region",NewPhenotype, ifelse(Group=="Daly River", "Daly River Migratory","Unknown")))
+mq$PlotPheno<-gsub("SFF","Burdekin Region Migratory",mq$PlotPheno)
+mq$PlotPheno<-gsub("SSS","Burdekin Region Resident",mq$PlotPheno)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Outlier clustering
+
+
+```{r}
+meta<-mq
+outliers<-read_csv("outputs/115/outflank-outs.csv") %>% arrange(-FST) #%>% # head(n=5)
+ # filter(CHROM=="NC_066856.1") %>% head(n=5) 
+  #filter(POS %in% c("3001384","2992178","2992188","2993681","2995063"))
+
+ddf<-read_tsv("outputs/105/snps-wgs-05-glf.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X72) %>% mutate(ID=paste0(`FALSE`,"_",X2)) %>%
+  relocate(ID) %>% left_join(chroms, by=c(`FALSE` = "Chromosome")) %>% relocate(Chrom) %>% mutate(ID2=paste0(Chrom," ",X2)) 
+#%>% filter(`FALSE`=="NC_066856.1") 
+ddf[ddf==-1]<-NA
+ddf2<-ddf %>% filter(ID %in% outliers$ID) 
+m<-ddf2 %>% dplyr::select(-ID, -ID2,-Chrom,-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+```
+
+```{r}
+annot$Phenotype<-meta$PlotPheno
+annot$`Sampling Location`<-meta$Group
+annot_colors=list(Phenotype=c("Burdekin Region Resident"="blue","Burdekin Region Migratory"="red","Daly River Migratory"="deeppink4",Unknown="grey75"),"Sampling Location"=c("Daly River"="pink","Roper River"="purple","Burdekin Region"="darkorange1", "Fitzroy River"="darkgoldenrod1"))
+
+```
+
+ color=colorRampPalette(c("#000004FF","#B63679FF","#FCFDBFFF"))))
+ 
+```{r}
+pheatmap(m,annotation_col = annot, cluster_rows = TRUE, annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$ID2, fontsize_row = 14, fontsize_col = 6)
+grid.text("foo", x=-20, rot=90, gp=gpar(fontsize=25))
+
+```
+
+
+```{r}
+as.ggplot(
+pheatmap(m, annotation_col = annot, cluster_rows = TRUE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$ID2, fontsize_row = 8, fontsize_col = 6,
+         angle_col = 315)) +
+         
+#  ggtitle("Heatmap of associated barra variants on Lca24\n") +
+  labs(caption="\nIndividual") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(plot.caption = element_text(size=14, hjust=0.4, face="bold")) 
+
+ggsave("outputs/116/top-associated-variants.jpeg", width=14, height=6)
+ggsave("outputs/116/top-associated-variants.pdf", width=14, height=6)
+
+```
+
+
+
+> mq %>% group_by(NewPhenotype) %>% summarize(Count=n())
+# A tibble: 3 × 2
+  NewPhenotype Count
+  <chr>        <int>
+1 SFF             22
+2 SSS             22
+3 UNK             25
+
+Cluster 1: 21 fish
+17 SSS
+2 SFF
+2 Fitz
+
+Cluster 2:
+5  SSS
+20 SFF
+5 Roper
+8 Daly
+10 Fitzroy
+
+Clustering accuracy
+(17+20)
+
+
+
+clustering_method = "ward.D"
+```{r}
+as.ggplot(
+pheatmap(m, annotation_col = annot, cluster_rows = TRUE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$ID2, fontsize_row = 8, fontsize_col = 6, clustering_method = "ward.D",
+         angle_col = 315)) +
+         
+#  ggtitle("Heatmap of associated barra variants on Lca24\n") +
+  labs(caption="\nIndividual") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(plot.caption = element_text(size=14, hjust=0.4, face="bold")) 
+
+ggsave("outputs/116/top-associated-variants-ward.jpeg", width=12, height=6)
+ggsave("outputs/116/top-associated-variants-ward.pdf", width=12, height=6)
+
+```
+
+# Look at frequency of outliers across pops?
+
+ outputs/105/renamed-05.vcf.gz 
+
+```{r}
+mq %>% filter(Group=="Fitzroy River") %>% select(specimen_id) %>% write_tsv("outputs/116/fitz.tsv", col_names = FALSE)
+mq %>% filter(Group=="Daly River") %>% select(specimen_id) %>% write_tsv("outputs/116/daly.tsv", col_names = FALSE)
+mq %>% filter(Group=="Roper River") %>% select(specimen_id) %>% write_tsv("outputs/116/roper.tsv", col_names = FALSE)
+bm %>% filter(PlotPheno=="Burdekin Region Migratory") %>% select(specimen_id) %>% write_tsv("outputs/116/mig.tsv", col_names = FALSE)
+bm %>% filter(PlotPheno=="Burdekin Region Resident") %>% select(specimen_id) %>% write_tsv("outputs/116/res.tsv", col_names = FALSE)
+
+bm %>% filter(Group=="Burdekin Region") %>% select(specimen_id) %>% write_tsv("outputs/116/burd.tsv", col_names = FALSE)
+
+read_csv("outputs/115/outflank-outs.csv") %>% select(CHROM, POS) %>% write_tsv("outputs/116/outs.tsv", col_names = FALSE)
+```
+
+```{sh, eval=FALSE}
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/fitz.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/fitz.dat
+
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/daly.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/daly.dat
+
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/roper.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/roper.dat
+
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/mig.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/mig.dat
+
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/res.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/res.dat
+
+bcftools view outputs/105/renamed-05.vcf.gz -R outputs/116/outs.tsv | bcftools view -S outputs/116/burd.tsv | bcftools +fill-tags -- -t MAF,F_MISSING | grep -v "#" | cut -f 1-8 > outputs/116/burd.dat
+```
+
+
+```{r}
+f<-read_tsv("outputs/116/fitz.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";") %>% mutate(Group="Fitzroy River") %>% mutate(Index=1:n())
+f$MAF<-gsub("MAF=","",f$MAF)
+f$MAF<-as.numeric(f$MAF)
+
+
+d<-read_tsv("outputs/116/daly.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";")  %>% mutate(Group="Daly River")  %>% mutate(Index=1:n())
+d$MAF<-gsub("MAF=","",d$MAF)
+d$MAF<-as.numeric(d$MAF)
+
+r<-read_tsv("outputs/116/roper.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";")  %>% mutate(Group="Roper River")  %>% mutate(Index=1:n())
+r$MAF<-gsub("MAF=","",r$MAF)
+r$MAF<-as.numeric(r$MAF)
+
+m<-read_tsv("outputs/116/mig.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";")  %>% mutate(Group="Burdekin Region Migratory")  %>% mutate(Index=1:n())
+m$MAF<-gsub("MAF=","",m$MAF)
+m$MAF<-as.numeric(m$MAF)
+
+res<-read_tsv("outputs/116/res.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";")  %>% mutate(Group="Burdekin Region Resident")  %>% mutate(Index=1:n())
+res$MAF<-gsub("MAF=","",res$MAF)
+res$MAF<-as.numeric(res$MAF)
+
+b<-read_tsv("outputs/116/burd.dat", col_names = FALSE) %>% separate(X8, into=c("PR","AC","AN","Missing","MAF"), sep=";")  %>% mutate(Group="Burdekin Region")  %>% mutate(Index=1:n())
+b$MAF<-gsub("MAF=","",b$MAF)
+b$MAF<-as.numeric(b$MAF)
+```
+
+Checking for same ref/alts
+```{r}
+select(f, X3, X4, X5, Index) %>% left_join(b)
+```
+
+
+```{r}
+ddf<-select(f,Index, X1, X2, MAF, Group) %>% bind_rows(select(d, Index, X1, X2, MAF, Group)) %>% bind_rows(select(r, Index, X1, X2, MAF, Group))  %>% bind_rows(select(b, Index, X1, X2, MAF, Group)) %>% bind_rows(select(m, Index, X1, X2, MAF, Group))  %>% bind_rows(select(res, Index, X1, X2, MAF, Group))  %>% left_join(chroms, by=c("X1"="Chromosome"))
+ddf$Group<-factor(ddf$Group, levels=c("Daly River","Roper River","Burdekin Region","Burdekin Region Resident","Burdekin Region Migratory","Fitzroy River"))
+
+ls<-ddf %>% select(X1, X2, Index) %>% unique() %>% left_join(chroms, by=c("X1"="Chromosome"))
+ls
+```
+
+```{r}
+ggplot(ddf) +
+  geom_line(aes(x=Index, y=MAF, group=Group, color=Group)) +
+  geom_point(aes(x=Index, y=MAF, color=Group)) +
+ # facet_grid(Group~.) +
+  theme_bw() +
+  theme(panel.grid=element_blank()) +
+  scale_color_viridis_d(option="H") +
+  #theme(legend.position = "none") +
+  scale_x_continuous(name="\nGenomic Location", breaks=ls$Index, labels=paste0(ls$Chrom, " ",ls$X2)) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  ylab("MAF\n")
+  
+
+ggsave("outputs/116/MAF-plot.jpeg", width=6, height=10)
+ggsave("outputs/116/MAF-plot.pdf", width=6, height=10)
+
+```
+
+
+Cluster based on allele freqs...
+
+```{r}
+d2<-ddf %>% relocate(Chrom) %>% pivot_wider(names_from = Group, values_from = MAF) %>% mutate("Genomic Position"=paste0(Chrom, " ", X2))
+
+write_csv(d2, file="outputs/116/allele-freqs.csv")
+mat<-d2 %>%   dplyr::select(-Chrom, -Index,-X1,-X2,-"Genomic Position") %>% as.matrix()
+  
+annotmat<-data.frame(sample=as.character(colnames(mat))) %>% column_to_rownames("sample")
+annotmat$Phenotype<-c("Unknown","Daly River Migratory","Unknown","Unknown","Burdekin Region Migratory","Burdekin Region Resident")
+
+annotmat$`Sampling Location`<-c("Fitzroy River","Daly River","Roper River","Burdekin Region","Burdekin Region","Burdekin Region")
+annot_colors=list(Phenotype=c("Burdekin Region Resident"="blue","Burdekin Region Migratory"="red","Daly River Migratory"="deeppink4",Unknown="grey75"),"Sampling Location"=c("Daly River"="pink","Roper River"="purple","Burdekin Region"="darkorange1", "Fitzroy River"="darkgoldenrod1"))
+
+```
+
+```{r}
+as.ggplot(pheatmap(mat, cluster_rows = TRUE, color=colorRampPalette(viridis(10, option="mako", direction=1, alpha = 0.75))(10), labels_row = d2$`Genomic Position`, annotation_col = annotmat,  annotation_colors = annot_colors)
+)
+
+ggsave("outputs/116/allele-freq-clust.pdf", width=10, height=6)
+
+```
+
+Clustering accuracy?
+44 fish
+
+```{r}
+(17+20)/44
+(2+5)/44
+```
+
+```
