@@ -57,6 +57,9 @@ m<-ddf2 %>% dplyr::select(-ID, -ID2,-Chrom,-`FALSE`, -X2) %>% as.matrix()
 annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
 ```
 
+
+
+
 ```{r}
 annot$Phenotype<-meta$PlotPheno
 annot$`Sampling Location`<-meta$Group

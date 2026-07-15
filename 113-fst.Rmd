@@ -8,6 +8,10 @@ date: "2026-03-25"
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
 ```
 
+```{r}
+library(tidyverse)
+library(snpR)
+```
 We can also look at Fst windows
 
 SFLc0427	SFLc0428	0.139075		
@@ -55,6 +59,8 @@ bcftools view outputs/104/renamed-05.vcf.gz -S bamlists/42.names | bcftools +fil
 bgzip outputs/113/filt.vcf
 tabix outputs/113/filt.vcf.gz
 bcftools view -Ov -r NC_066833.1,NC_066856.1 outputs/113/filt.vcf.gz > outputs/113/twochroms.vcf
+bcftools view -Ov -r NC_066833.1,NC_066844.1,NC_066856.1 outputs/113/filt.vcf.gz > outputs/113/threechroms.vcf
+
 ```
 
 996731 variants at maf05, the complete thing is too big for my current SNPr setup
@@ -62,7 +68,7 @@ Error: C stack usage 21536065 is too close to the limit
 ```{r, eval=FALSE}
 #snps<-import.snpR.data("outputs/113/filt.vcf.gz", sample.meta = dplyr::select(m42,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
 
-snps<-import.snpR.data("outputs/113/twochroms.vcf", sample.meta = dplyr::select(m42,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+snps<-import.snpR.data("outputs/113/threechroms.vcf", sample.meta = dplyr::select(m42,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
 
 snps@snp.meta$CHROM<-gsub("\\.1","",snps@snp.meta$CHROM)
 p<-plot_clusters(snps, "NewPhenotype")
@@ -91,27 +97,43 @@ fsts<-get.snpR.stats(fst, facets = "CHROM.NewPheno", stats = "fst")
 ```
 
 ```{r}
+outliers<-fsts$pairwise %>% as_tibble() %>% mutate(p99 = quantile(fst, probs = 0.999, na.rm = TRUE))  %>% filter(fst > p99)
+
+```
+
+```{r}
 ggplot(fsts$pairwise) +
-  geom_point(aes(x=position, y=fst))  +
+  geom_point(aes(x=position, y=fst), alpha=0.5)  +
+  geom_point(data=outliers, aes(x=position, y=fst), pch=21, fill="skyblue") +
   facet_wrap(.~CHROM)
 ```
 
 
 
 ```{r}
-smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=50, step=20)
+smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=50, step=20, triple_sigma = FALSE) #sigma=50, step=20
 smoothf<-get.snpR.stats(smooth, "CHROM.NewPheno", "pairwise.window") 
 ```
+sigma	
+numeric. Designates the width of windows in kilobases. Full window size is 6*sigma or sigma kilobases depending on the triple_sigma argument.
+
+step	
+numeric or NULL, default default 2*sigma (non-overlapping windows). Designates the number of kilobases between each window centroid. If NULL, windows are centered on each SNP.
+
 
 
 ```{r}
+outs<-smoothf %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
+
 ggplot(smoothf) +
-  geom_point(aes(x=position, y=fst)) +
-  facet_wrap(.~snp.subfacet)
+  geom_point(aes(x=position, y=fst), alpha=0.5) +
+  geom_point(data=outs, aes(x=position, y=fst), pch=21, fill="skyblue") +
+  facet_wrap(.~snp.subfacet) +
+  theme_bw() +
+  ylab("Fst") +
+  xlab("Position")
 ```
 
+Can try https://pixy.readthedocs.io/en/latest/
 
-```{r}
-ggplot(smoothf) +
-  geom_boxplot(aes(y=fst))
-```
+

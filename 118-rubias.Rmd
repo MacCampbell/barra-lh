@@ -1,0 +1,147 @@
+---
+title: "118-rubias"
+output: html_document
+date: "2026-07-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r, eval=FALSE}
+library(tidyverse)
+library(vcfR)
+library(rubias)
+```
+
+example data:
+chinook %>% write_csv("outputs/118/chinook.csv")
+alewife %>% write_csv("outputs/118/alewife.csv")
+
+```{r}
+ale_dev <- assess_reference_loo(alewife, 17, reps = 5)
+```
+
+```{r}
+sub<-chinook %>% filter(collection %in% c("Mill_Cr_sp","Feather_H_sp","Montana_Ck"))
+
+chook <- assess_reference_loo(sub, 5, reps = 1000, mixsize = 100, printSummary=TRUE)
+```
+
+What does this produce?
+
+```{r}
+chook
+
+```
+
+
+https://doi.org/10.1139/cjfas-2021-0006
+. Unlike the 100% mixture simulations, simulations for the leave-one-out cross-validation consisted of simulating mixtures with stochastic composition and then evaluating how closely estimated population contributions aligned with true contributions. Mixture composition was generated randomly from Dirichlet distributions with the concentration parameter for each spawning population set at 1.5. As with the 100% mixture simulations, size of the mixture was set at 200 fish and 1000 simulations were conducted. Accuracy for the leave-one-out cross-validation accuracy was determined by calculating the mean absolute deviation between estimated and true contribution for each of the spawning populations.
+
+Results from simulated mixtures based on leave-one-out analyses (Fig. 2) suggested that on average there was sufficient genetic differentiation among the spawning populations using 12 disomic microsatellite loci to estimate mixture contribution within 3% of true contributions. Based on the leave-one-out cross-validation simulations, the mean absolute deviation between estimated and simulated population contributions ranged from 2.1% to 3.2% for the different spawning populations, with the highest deviance for the Fox and Oconto–Peshtigo spawning populations and the lowest deviance for the Kalamazoo and Muskegon populations (Fig. 2). This means on average across the simulations, estimated spawning population contributions were within approximately ±3% of the simulated population contributions. The maximum absolute deviation from the leave-one-out cross-validation simulations ranged from 9.3% to 16.4% for the different spawning populations, with the highest deviance again observed for the Fox and Oconto–Peshtigo spawning populations (Fig. 2).
+```{r}
+tidychook<-chook %>% pivot_longer(cols = 8:9, names_to = "Estimator", values_to = c("EstimatedPi")) 
+ggplot(tidychook, aes(x=true_pi, y=EstimatedPi)) +
+  geom_point() +
+  facet_wrap(collection~Estimator) +
+  coord_equal()
+  
+```
+
+```{r}
+percentchook<-tidychook %>% group_by(collection, Estimator) %>% mutate(Diff=abs(true_pi-EstimatedPi)) %>% mutate(PercentDiff=(Diff/true_pi)*100) 
+ggplot(percentchook) +
+  geom_boxplot(aes(x=collection, y=PercentDiff)) +
+  facet_wrap(.~Estimator)
+```
+
+
+
+```{r}
+percentchook %>% summarize(MeanPercent=mean(PercentDiff), MedianPercent=median(PercentDiff))
+```
+
+
+Ok, so let's get our key loci converted into some sort of tidydf 
+
+Can use the vcf files
+
+chaning the way this looks for use with rubias
+
+```{r}
+outliers<-read_csv("outputs/115/outflank-outs.csv")
+outliers %>% select(ID) %>% write_tsv("outputs/118/outs.csv", col_names = FALSE)
+
+```
+
+bcftools view --include 'ID==@outs.csv' filt.vcf > output.vcf
+
+```{r}
+vcf <- read.vcfR("outputs/118/output.vcf")
+tidy <- vcfR2tidy(vcf)
+m42<-read_csv("meta/m42.csv")
+mm42<-m42 %>% select(specimen_id,NewPhenotype) %>% mutate(sample_type="reference", repunit="Burdekin",collection=NewPhenotype, indiv=specimen_id) %>% select(-specimen_id,-NewPhenotype)
+```
+reorder %>% select(Marker, A1, A2) %>% unique() %>% mutate(String=paste0("A1",Marker, " ",A2.Marker))
+
+%>% mutate(Marker=paste0(ChromKey,"-",POS)) %>% select(-ChromKey, -POS) %>% relocate(Indiv, Marker) %>% select(-gt_GT_alleles) %>% 
+  separate(gt_GT, sep="/", into =c(paste0(Marker,".1"),paA
+```{r}
+reorder<-tidy$gt %>% separate(gt_GT, sep="/", into=c("A1","A2")) %>% mutate(Marker=paste0(ChromKey,"-",POS)) %>% select(-ChromKey, -POS) %>% relocate(Indiv, Marker) %>% select(-gt_GT_alleles) %>% rename(indiv=Indiv)
+
+reorder<-reorder %>%
+  pivot_wider(id_cols=indiv, names_from =  Marker, values_from = c(A1,A2))
+reorder<-reorder %>% relocate(indiv,`A1_1-17987625`,`A2_1-17987625`, `A1_2-1171940`,`A2_2-1171940`,`A1_2-5304936`,`A2_2-5304936`,`A1_3-25539466`,`A2_3-25539466`,`A1_3-25539579`,`A2_3-25539579`,
+                              `A1_4-2922305`,`A2_4-2922305`,`A1_4-2922605`,`A2_4-2922605`,`A1_4-2992178`,`A2_4-2992178`,`A1_4-2992188`,`A2_4-2992188`,`A1_4-2993681`,`A2_4-2993681`,
+                             `A1_4-2996993`,`A2_4-2996993`,`A1_4-2995063`, `A2_4-2995063`,`A1_4-3001384`,`A2_4-3001384`,`A1_4-16177028`,`A2_4-16177028` )
+barra<-reorder %>% left_join(mm42) %>% relocate(sample_type, repunit, collection, indiv)
+```
+
+
+```{r, eval=FALSE}
+bh<-assess_reference_loo(barra, 5, reps = 10000, mixsize = 30, printSummary=FALSE)
+save(bh, file="outputs/118/bh.rda")
+```
+
+```{r}
+load("outputs/118/bh.rda")
+bh$collection<-gsub("SSS","Resident",bh$collection)
+bh$collection<-gsub("SFF","Migratory",bh$collection)
+bh$collection<-factor(bh$collection, levels=c("Migratory","Resident"))
+bh<-rename(bh,ML=`mle_pi`)
+bh<-rename(bh,Bayesian=`post_mean_pi`)
+```
+
+```{r}
+tidybarra<-bh %>% pivot_longer(cols = 8:9, names_to = "Estimator", values_to = c("EstimatedPi")) 
+ggplot(tidybarra, aes(x=true_pi, y=EstimatedPi)) +
+  geom_point(aes(fill=collection), pch=21,alpha=0.8) +
+  facet_wrap(collection~Estimator) +
+  coord_equal() +
+  theme_bw() +
+  scale_fill_manual(values=c("red","blue")) +
+  ylab("Estimated Mixture Proportion\n") +
+  xlab("\nTrue Mixture Proportion") +
+  theme(axis.title = element_text(size=14, face="bold")) +
+  theme(legend.position = "none")
+
+ggsave("outputs/118/piplot.pdf", width=5, height=7)
+  
+```
+
+```{r}
+percentbarra<-tidybarra %>% group_by(collection, Estimator) %>% mutate(Diff=abs(true_pi-EstimatedPi)) %>% mutate(PercentDiff=(Diff/true_pi)*100) 
+ggplot(percentbarra) +
+  geom_boxplot(aes(x=collection, y=PercentDiff)) +
+  facet_wrap(.~Estimator)
+```
+
+
+
+```{r}
+percentbarra %>% summarize(MeanPercent=mean(PercentDiff), MedianPercent=median(PercentDiff))
+```
+
+
+We could possibly find linked loci, not just these independent ones. 

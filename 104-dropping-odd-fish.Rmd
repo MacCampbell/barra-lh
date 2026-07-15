@@ -410,6 +410,9 @@ ggplot(pcadata) +
   scale_fill_viridis_d(option="H")
 ```
 
+SFLc0435
+SFLc0650
+
 ```{r}
 pcadata %>% arrange(-V1)
 pcadata %>% arrange(-V2)
