@@ -1,0 +1,231 @@
+---
+title: "118-rubias"
+output: html_document
+date: "2026-07-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r, eval=FALSE}
+library(tidyverse)
+library(vcfR)
+library(rubias)
+library(ggpubr)
+library(grid)
+```
+
+example data:
+chinook %>% write_csv("outputs/118/chinook.csv")
+alewife %>% write_csv("outputs/118/alewife.csv")
+
+```{r}
+ale_dev <- assess_reference_loo(alewife, 17, reps = 5)
+```
+
+```{r}
+sub<-chinook %>% filter(collection %in% c("Mill_Cr_sp","Feather_H_sp","Montana_Ck"))
+
+chook <- assess_reference_loo(sub, 5, reps = 100, mixsize = 100, printSummary=TRUE)
+```
+
+What does this produce?
+
+```{r}
+chook
+
+```
+
+
+https://doi.org/10.1139/cjfas-2021-0006
+. Unlike the 100% mixture simulations, simulations for the leave-one-out cross-validation consisted of simulating mixtures with stochastic composition and then evaluating how closely estimated population contributions aligned with true contributions. Mixture composition was generated randomly from Dirichlet distributions with the concentration parameter for each spawning population set at 1.5. As with the 100% mixture simulations, size of the mixture was set at 200 fish and 1000 simulations were conducted. Accuracy for the leave-one-out cross-validation accuracy was determined by calculating the mean absolute deviation between estimated and true contribution for each of the spawning populations.
+
+Results from simulated mixtures based on leave-one-out analyses (Fig. 2) suggested that on average there was sufficient genetic differentiation among the spawning populations using 12 disomic microsatellite loci to estimate mixture contribution within 3% of true contributions. Based on the leave-one-out cross-validation simulations, the mean absolute deviation between estimated and simulated population contributions ranged from 2.1% to 3.2% for the different spawning populations, with the highest deviance for the Fox and Oconto–Peshtigo spawning populations and the lowest deviance for the Kalamazoo and Muskegon populations (Fig. 2). This means on average across the simulations, estimated spawning population contributions were within approximately ±3% of the simulated population contributions. The maximum absolute deviation from the leave-one-out cross-validation simulations ranged from 9.3% to 16.4% for the different spawning populations, with the highest deviance again observed for the Fox and Oconto–Peshtigo spawning populations (Fig. 2).
+```{r}
+tidychook<-chook %>% pivot_longer(cols = 8:9, names_to = "Estimator", values_to = c("EstimatedPi")) 
+ggplot(tidychook, aes(x=true_pi, y=EstimatedPi)) +
+  geom_point() +
+  facet_wrap(collection~Estimator) +
+  coord_equal()
+  
+```
+
+```{r}
+percentchook<-tidychook %>% group_by(collection, Estimator) %>% mutate(Diff=abs(true_pi-EstimatedPi)) %>% mutate(PercentDiff=(Diff/true_pi)*100) 
+ggplot(percentchook) +
+  geom_boxplot(aes(x=collection, y=PercentDiff)) +
+  facet_wrap(.~Estimator)
+```
+
+
+
+```{r}
+percentchook %>% summarize(MeanPercent=mean(PercentDiff), MedianPercent=median(PercentDiff))
+```
+
+
+Ok, so let's get our key loci converted into some sort of tidydf 
+
+Can use the vcf files
+
+chaning the way this looks for use with rubias
+
+```{r}
+outliers<-read_csv("outputs/119/outflank-outs.csv")
+outliers %>% select(ID) %>% write_tsv("outputs/121/outs.csv", col_names = FALSE)
+outliers
+```
+
+
+bcftools view --include 'ID==@outs.csv' filt.vcf.gz > output.vcf
+
+bcftools view --include 'ID==@outs.csv' renamed-05.vcf.gz > output.vcf
+
+#Maybe we want to include all our samples here....
+
+meta: meta/mq.csv")
+vcf: outputs/105/renamed-05.vcf.gz
+
+ %>% , repunit="Burdekin",collection=NewPhenotype, indiv=specimen_id) %>% select(-specimen_id,-NewPhenotype)
+```{r}
+vcf <- read.vcfR("outputs/121/output.vcf")
+tidy <- vcfR2tidy(vcf)
+m42<-read_csv("meta/mq.csv")
+
+mm42<-m42 %>% select(specimen_id,NewPhenotype,Group,) %>% mutate(sample_type=ifelse(Group=="Burdekin","reference", "mixture")) %>%
+  mutate(repunit=Group) %>% mutate(collection=ifelse(Group=="Burdekin",NewPhenotype,Group)) %>% mutate(indiv=specimen_id) %>% select(-specimen_id,-NewPhenotype)
+
+mm42
+                                                                          
+```
+reorder %>% select(Marker, A1, A2) %>% unique() %>% mutate(String=paste0("A1",Marker, " ",A2.Marker))
+
+%>% mutate(Marker=paste0(ChromKey,"-",POS)) %>% select(-ChromKey, -POS) %>% relocate(Indiv, Marker) %>% select(-gt_GT_alleles) %>% 
+  separate(gt_GT, sep="/", into =c(paste0(Marker,".1"),paA
+```{r}
+reorder<-tidy$gt %>% separate(gt_GT, sep="/", into=c("A1","A2")) %>% mutate(Marker=paste0(ChromKey,"-",POS)) %>% select(-ChromKey, -POS) %>% relocate(Indiv, Marker) %>% select(-gt_GT_alleles) %>% rename(indiv=Indiv)
+
+
+reorder<-reorder %>%
+  pivot_wider(id_cols=indiv, names_from =  Marker, values_from = c(A1,A2))
+
+reorder<-reorder %>% relocate(indiv,`A1_1-5304936`,`A2_1-5304936`,`A1_2-16896059`,`A2_2-16896059`,`A1_3-25539466`,`A2_3-25539466`,`A1_3-25539579`,`A2_3-25539579`,`A1_4-13333630`,`A2_4-13333630`,`A1_4-13363426`,`A2_4-13363426`,`A1_4-13376269`,`A2_4-13376269`,`A1_4-17587316`,`A2_4-17587316`,`A1_4-27782546`,`A2_4-27782546`,`A1_4-27782590`,`A2_4-27782590`,`A1_4-27782611`,`A2_4-27782611`,`A1_4-27783044`,`A2_4-27783044`,`A1_5-4432235`,`A2_5-4432235`,`A1_5-4432265`,`A2_5-4432265`,`A1_6-2922305`,`A2_6-2922305`,`A1_6-2922605`,`A2_6-2922605`,`A1_6-2992178`,`A2_6-2992178`,`A1_6-2992188`,`A2_6-2992188`,`A1_6-2993681`,`A2_6-2993681`,`A1_6-2995063`,`A2_6-2995063`,`A1_6-2996993`,`A2_6-2996993`,`A1_6-3001384`,`A2_6-3001384`,`A1_6-16166923`,`A2_6-16166923`,`A1_6-16177028`,`A2_6-16177028`,`A1_6-16178001`,`A2_6-16178001`)
+barra<-reorder %>% left_join(mm42) %>% relocate(sample_type, repunit, collection, indiv) %>% select(-Group)
+```
+
+
+```{r, eval=FALSE}
+bh<-assess_reference_loo(barra %>% filter(repunit=="Burdekin"), 5, reps = 10000, mixsize = 30, printSummary=FALSE)
+save(bh, file="outputs/119/bh.rda")
+```
+
+```{r}
+load("outputs/119/bh.rda")
+bh$collection<-gsub("SSS","Resident",bh$collection)
+bh$collection<-gsub("SFF","Migratory",bh$collection)
+bh$collection<-factor(bh$collection, levels=c("Migratory","Resident"))
+bh<-rename(bh,ML=`mle_pi`)
+bh<-rename(bh,Bayesian=`post_mean_pi`)
+```
+
+```{r}
+tidybarra<-bh %>% pivot_longer(cols = 8:9, names_to = "Estimator", values_to = c("EstimatedPi")) 
+piplot<-ggplot(tidybarra, aes(x=true_pi, y=EstimatedPi)) +
+  geom_point(aes(fill=collection), pch=21,alpha=0.8) +
+  facet_wrap(collection~Estimator) +
+  coord_equal() +
+  theme_bw() +
+  scale_fill_manual(values=c("red","blue")) +
+  ylab("Estimated Mixture Proportion\n") +
+  xlab("\nTrue Mixture Proportion") +
+  theme(axis.title = element_text(size=14, face="bold")) +
+  theme(legend.position = "none") +
+  theme(axis.text=element_text(size=6))
+piplot
+ggsave("outputs/119/piplot.pdf", width=5, height=7)
+  
+```
+
+```{r}
+percentbarra<-tidybarra %>% group_by(collection, Estimator) %>% mutate(Diff=abs(true_pi-EstimatedPi)) %>% mutate(PercentDiff=(Diff/true_pi)*100) 
+ggplot(percentbarra) +
+  geom_boxplot(aes(x=collection, y=PercentDiff)) +
+  facet_wrap(.~Estimator)
+```
+
+
+
+```{r}
+percentbarra %>% summarize(MeanPercent=mean(PercentDiff), MedianPercent=median(PercentDiff))
+```
+
+
+We could possibly find linked loci, not just these independent ones. 
+
+
+Ok, now how about assigning unknowns?
+
+```{r}
+bref<-barra %>% filter(sample_type=="reference")
+#bunk<-barra %>% filter(sample_type=="mixture") %>% mutate(repunit=NA)
+bunk<-barra %>% mutate(sample_type="mixture") %>% mutate(repunit=NA) #filter(sample_type != "reference") 
+bunk
+```
+
+```{r}
+withb <- infer_mixture(bref, bunk, 5, reps=10000, burn_in=1000, pb_iter=1000)
+```
+
+
+```{r}
+di<-withb$indiv_posteriors 
+di<-di %>% mutate(Phenotype=ifelse(mixture_collection %in% c("FitzroyQLD","Roper River"),"Unknown",ifelse(mixture_collection %in% c("Daly River","SFF"),"Migratory", "Resident")))
+di$mixture_collection<-gsub("QLD"," River",di$mixture_collection)
+di$mixture_collection<-gsub("SSS|SFF","Burdekin Region",di$mixture_collection)
+di$mixture_collection<-factor(di$mixture_collection, levels=c("Burdekin Region","Fitzroy River","Roper River","Daly River"))
+di<-di %>% arrange(mixture_collection)
+
+order<-di %>% select(mixture_collection, indiv, collection, PofZ) %>% filter(collection=="SSS") %>% arrange(mixture_collection) %>% mutate(PlotOrder=1:n()) %>% select(indiv, PlotOrder)
+order$PlotOrder<-as.factor(order$PlotOrder)
+di<-di %>% left_join(order)
+```
+
+```{r}
+assign<-ggplot(di) +
+  geom_col(aes(x=PlotOrder, y=PofZ, fill=collection), alpha=0.8) +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+  xlab("\nIndividual") +
+  ylab("Posterior Probablity of Assignment\n") +
+  theme(axis.title=element_text(size=14, face="bold"))  +
+#  theme(panel.grid=element_blank()) +
+  scale_fill_manual("Assigned Phenotype",values=c("red","blue"), labels=c("Migratory","Resident") ) +
+  facet_grid(mixture_collection~Phenotype, scales="free_x", space="free_x") +
+  theme(axis.text.x=element_text(size=4)) +
+ theme(axis.text.x=element_blank()) +
+  theme(legend.position =  "bottom")
+
+assign
+ggsave("outputs/121/assignmentprobs.jpeg", width=8, height=5)
+```
+  
+```{r}
+di %>% select(indiv,mixture_collection) %>% unique() %>% group_by(mixture_collection) %>% summarize(Count=n())
+```
+
+```{r}
+blank <- grid.rect(gp=gpar(col="white"))
+```
+
+```{r}
+ggarrange(ggplotGrob(ggarrange(piplot+theme(axis.text=element_text(size=6)) + ggtitle("A") + theme(plot.title = element_text(size=14, face="bold")),
+                               blank, ncol=1, heights = c(3,1))),
+          assign + theme(axis.text.y=element_text(size=8)) + ggtitle("B") + theme(plot.title = element_text(size=14, face="bold")),
+          ncol=2,
+          widths=c(1.4,2))
+
+ggsave("outputs/121/figure-3.jpeg", width=12, height=6)
+ggsave("outputs/121/figure-3.pdf", width=12, height=6)
+
+```

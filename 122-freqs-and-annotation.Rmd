@@ -1,0 +1,27 @@
+---
+title: "122-freqs and annotation"
+output: html_document
+date: "2026-07-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+bcftools view --regions-file meta/snps-to-annotate-r2.tsv outputs/105/renamed-05.vcf.gz -Ov -o meta/snps-to-annotate-r2.vcf
+
+srun -p bmh -t 02:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GCF001640805.2 ~/barra-lh/meta/snps-to-annotate.vcf > snps.ann.vcf
+
+```{r}
+toanno<-read_csv("outputs/119/outlier-snps.csv") %>% separate(INFO, sep=";", into=c("PR","AC","AN","F_MISSING","MAF"))
+toanno$MAF<-gsub("MAF=","",toanno$MAF)
+toanno$MAF<-as.numeric(toanno$MAF)
+chroms<-read_tsv("meta/lates-lgs-named.txt")
+
+toanno %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(Chrom,POS, MAF, FST, qvalues)
+```

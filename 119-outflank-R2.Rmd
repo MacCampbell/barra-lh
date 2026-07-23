@@ -9,6 +9,13 @@ date: "2026-07-15"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(tidyverse)
+library(RColorBrewer)
+library(vcfR)
+library(OutFLANK)
+```
+
 Originally I kept SFLc0428 and SFLc0435 because they are higher coverage
 
 SFLc0228, SFLc0427, SFLc0428, SFLc0356, SFLc0403 SFLc0398 are a potential family
@@ -29,19 +36,22 @@ m44 %>% filter(specimen_id %in% c("SFLc0435","SFLc0650")) %>% relocate(NewPhenot
 
 Now I can filter to keep sampleSizes,
 
-if we drop out kin, we end up 17 SFF and 20 SS (newphenotype), so we need to keep 2 SFF fish
-Keeping SFLc0435 and SFLc0356 based on highest coverage
+SFLc0435 and SFLc0650 both kept
+
+SFLc0228, SFLc0427, SFLc0428, SFLc0356, SFLc0403, SFLc0398, keep SFLc0228 and SFLc0428 since they have opposite phenotypes.
+
+SFLc0435, SFLc0650, SFLc0228 and SFLc0428 now kept
 ```{r}
-#m44 %>% filter(!specimen_id %in% c("SFLc0228", "SFLc0427", "SFLc0428", "SFLc0356", "SFLc0403","SFLc0435","SFLc0650")) 
-m38<-m44 %>% filter(!specimen_id %in% c("SFLc0228", "SFLc0427", "SFLc0428", "SFLc0403","SFLc0650","SFLc0398")) 
+#m38<-m44 %>% filter(!specimen_id %in% c("SFLc0228", "SFLc0427", "SFLc0428", "SFLc0403","SFLc0650","SFLc0398")) 
+m40<-m44 %>% filter(!specimen_id %in% c("SFLc0427", "SFLc0403","SFLc0398","SFLc0356")) 
 
-mig <- m38 %>% filter(NewPhenotype =="SFF") #19
-res <- m38 %>% filter(NewPhenotype =="SSS") #19
+mig <- m40 %>% filter(NewPhenotype =="SFF") #19
+res <- m40 %>% filter(NewPhenotype =="SSS") #21
 
-write_csv(m38,"meta/m38.csv")
-m38 %>% select(specimen_id) %>% write_tsv("bamlists/38.names", col_names = FALSE)
-m38 %>% select(Path) %>% write_tsv("bamlists/38.bamlist", col_names=FALSE)
-m38 %>% select(NewPheno) %>% write_tsv("bamlists/38.pheno",col_names = FALSE)
+write_csv(m40,"meta/m40.csv")
+m40 %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/40.names", col_names = FALSE)
+m40 %>% dplyr::select(Path) %>% write_tsv("bamlists/40.bamlist", col_names=FALSE)
+m40 %>% dplyr::select(NewPheno) %>% write_tsv("bamlists/40.pheno",col_names = FALSE)
 ```
 
 
@@ -57,13 +67,13 @@ Following https://baylab.github.io/MarineGenomics/week-7-fst-and-outlier-analysi
 using outputs/105/renamed-05.vcf.gz, this is the file  of called snps from all our samples in the study
 
 ```{sh, eval=FALSE}
-bcftools view outputs/105/renamed-05.vcf.gz -S bamlists/38.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/119/filt.vcf
+bcftools view outputs/105/renamed-05.vcf.gz -S bamlists/40.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/119/filt.vcf
 bgzip outputs/119/filt.vcf
 tabix outputs/119/filt.vcf.gz
 bcftools view -Ov -r NC_066833.1,NC_066856.1 outputs/119/filt.vcf.gz > outputs/119/twochroms.vcf
 ```
 
-956959 snps
+956959 snps, now 841797 snps?
 ```{r, eval=FALSE}
 #vcf.path<-"outputs/119/twochroms.vcf"
 vcf.path<-"outputs/119/filt.vcf.gz"
@@ -100,7 +110,7 @@ subgen<-tG
 
 Don't need to subset
 ```{r}
-fst <- MakeDiploidFSTMat(subgen,locusNames=1:ncol(subgen),popNames=m38$NewPhenotype)
+fst <- MakeDiploidFSTMat(subgen,locusNames=1:ncol(subgen),popNames=m40$NewPhenotype)
 ```
 
 ```{r}
@@ -136,13 +146,14 @@ OutFLANKResultsPlotter(OF,withOutliers=T,
 
 ```{r}
 P1 <- pOutlierFinderChiSqNoCorr(fst,Fstbar=OF$FSTNoCorrbar,
-                                dfInferred=OF$dfInferred,qthreshold=0.05,Hmin=0.1)
+                                dfInferred=OF$dfInferred,qthreshold=0.01,Hmin=0.1)
 outliers <- P1$OutlierFlag==TRUE #which of the SNPs are outliers?
 table(outliers)
 
 ```
 
-887311
+809717 True 738 with qthreshold=0.05 
+809717 True 25 with qthreshold=0.01
 
 ```{r}
 plot(P1$LocusName,P1$FST,xlab="Position",ylab="FST",col=rgb(0,0,0,alpha=0.1))
@@ -167,7 +178,7 @@ mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
 ```
 
 ```{r}
-ggplot(p2 %>% filter(FST >0)) +
+fsta<-ggplot(p2 %>% filter(FST >0)) +
   geom_rect(data=labels, aes(xmin=Min, xmax=Max), ymin=0, ymax=0.55, fill=mycolors, alpha=0.25) +
   geom_point(aes(x=LocusName, y=FST, color=CHROM), alpha=0.5) +
   geom_point(data=outs, aes(x=LocusName, y=FST), fill="black") +
@@ -183,6 +194,7 @@ ggplot(p2 %>% filter(FST >0)) +
   scale_color_manual(values=mycolors) +
   theme(axis.title = element_text(face="bold", size=14))
 
+fsta
 
 ggsave("outputs/119/fst-outlier-plot.jpeg", width=8, height=5)
 ggsave("outputs/119/fst-outlier-plot.pdf", width=8, height=5)
@@ -191,16 +203,122 @@ ggsave("outputs/119/fst-outlier-plot.pdf", width=8, height=5)
 
 
 ```{r}
-outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
 ```
 
 ```{r}
-outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count, -FST)
+outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(CHROM, Chrom, POS, FST) %>% group_by(CHROM, Chrom) %>% mutate(Count=n()) %>% arrange(-Count, -FST) %>% write_csv("outputs/119/outs.csv")
 ```
+
 ```{r}
-outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO) %>% select(CHROM, POS)
+outs %>% arrange(CHROM, POS) %>% dplyr::select(CHROM, POS, FST, qvalues, INFO) %>% write_csv("outputs/119/outlier-snpts.csv", col_names = FALSE)
+outs %>% arrange(CHROM, POS) %>% dplyr::select(CHROM, POS, FST, qvalues, INFO) %>% dplyr::select(CHROM, POS) %>% write_tsv("meta/snps-to-annotate-r2.tsv", col_names = FALSE)
+
 ```
 
 ```{r}
 outs %>% arrange(CHROM, POS) %>% select(CHROM, POS, FST, qvalues, INFO) %>% filter(CHROM=="NC_066856.1") %>% arrange(-FST) %>% write_csv("outputs/119/top-outs-24.csv")
+```
+
+
+# GWAS
+
+Killed by bml
+```{sh, eval=FALSE}
+srun -t 72:00:00 -p bmh --mem=32G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -P 12 \
+ -doAsso 1 -yBin $HOME/barra-lh/bamlists/40.pheno -GL 1 -minInd 38 -minMaf 0.10 \
+ -minMapQ 20 -minQ 20 \
+ -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 -rf meta/lates-lgs.txt -out outputs/119/combined-asso-95 \
+ -bam $HOME/barra-lh/bamlists/40.bamlist  > outputs/119/combined-asso.out 2> outputs/119/combined-asso.err &
+```
+
+_066837.1	5700344	A	C	0.171094	20.732746
+NC_066856.1	2996993	T	G	0.276176	21.228937
+NC_066856.1	2922339	G	A	0.316783	21.345727
+NC_066856.1	2992178	C	T	0.498508	21.931326
+NC_066856.1	2995063	T	C	0.473908	22.283522
+NC_066836.1	5304936	G	A	0.184339	22.583451
+NC_066856.1	2922305	C	T	0.326127	23.251738
+NC_066844.1	25539579	A	G	0.249469	23.596253
+NC_066856.1	3001384	A	C	0.496650	28.213501
+NC_066844.1	25539466	A	G	0.234164	30.348071
+
+
+
+
+```{r}
+lrt<- read_tsv("outputs/119/combined-asso-95.lrt0.gz") %>% mutate(log10p = -log10(dchisq(LRT, df = 1))) %>% mutate(p = dchisq(LRT, df=1)) %>%
+  filter(log10p != Inf) %>% filter(log10p>=0) %>%   mutate(bonfer = p.adjust(p, method = "bonferroni")) %>% 
+  mutate(BHfdr = p.adjust(p, method = "BH")) %>%
+  group_by(Chromosome) %>%
+  mutate(bonfercrhom = p.adjust(p, method = "bonferroni")) %>%
+  mutate(BHfdrchrom = p.adjust(p, method = "BH")) %>% left_join(names)
+#lrt  %>% arrange(-bonfercrhom)  %>% dplyr::select(Chromosome, Position, p, bonfer, BHfdr, bonfercrhom, BHfdrchrom) 
+dd <- lrt %>% ungroup() %>% filter(log10p !=Inf)  %>% mutate(Index=1:n())
+
+```
+
+```{r}
+alpha<-0.05/nrow(lrt %>% filter(Frequency > 0.2))
+alpha
+```
+
+```{r}
+Chroms<-dd %>% group_by(Chromosome) %>% mutate(Start=min(Index), Stop=max(Index)) %>% 
+  dplyr::select(Chromosome,Chrom,Start,Stop) %>% unique() %>% 
+  mutate(Position=round((Start+Stop)/2))
+
+gwas<-ggplot(dd) +
+  #geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
+  geom_hline(yintercept = -log10(5.5e-8), lty=2, alpha=0.9, size=.25) +
+  geom_point(data=dd, aes(x=Index, y=log10p, color=Chromosome), alpha=0.75, cex=0.5) +
+ # geom_point(data=ps, aes(x=Index, y=log10p), color="black", cex=0.5, alpha=0.9) +
+  theme_bw() +
+  scale_x_continuous(breaks=Chroms$Position, labels=Chroms$Chrom) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1, face="bold", size=7)) +
+  theme(legend.title = element_blank()) +
+  theme(panel.grid = element_blank()) +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors2) +
+#  ylab("-log10(p)\n") +
+  xlab("\nChromosome") +
+  labs(y=expression(paste("-", log[10],"(",italic(p),"-value)",sep=""))) +
+ #   ggtitle("Brackish Water Resident vs Catadromous GWAS") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(axis.title= element_text(size=14))+
+  theme(axis.text = element_text(size=10))
+
+
+gwas
+ggsave("outputs/119/SSS-SFF-40-inds-all-chroms-filtered-post.jpeg", width=6, height=3.5)
+ggsave("outputs/119/SSS-SFF-40-inds-all-chroms-filtered-post.pdf", width=6, height=3.5)
+
+```
+
+#Volcano Plot
+```{r}
+l<-lrt %>% mutate(ID=paste0(Chromosome, "_",Position))
+l2<-l %>% filter(ID %in% p2$ID)
+p3<-p2 %>% filter(ID %in% l$ID)
+```
+
+
+
+````{r}
+l3<-left_join(l2, p3) %>% mutate(Outlier = ifelse(ID %in% outs$ID, "Yes","No"))
+```
+
+```{r}
+ggplot(l3) +
+  geom_point(aes(x=FST, y=log10p, fill=Outlier), pch=21, alpha=.9) +
+  geom_hline(yintercept = -log10(alpha), lty=1, alpha=0.9, size=0.25) +
+  #geom_vline(xintercept =  min(outs$FST), lty=1, alpha=0.95, size=0.25) +
+  theme_bw() +
+  theme(panel.grid=element_blank()) +
+  xlab("\nFst") +
+  ylab("-log10p-value") +
+  scale_fill_manual(values=c("grey50","purple")) +
+  scale_fill_discrete("Fst Outlier")
+
+ggsave("outputs/119/fst-logpvalue.jpeg")
 ```

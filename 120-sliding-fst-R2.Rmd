@@ -1,0 +1,216 @@
+---
+title: "120-sliding-fst-R2"
+output: html_document
+date: "2026-07-15"
+---
+
+````{r}
+library(tidyverse)
+library(snpR)
+library(ggpubr)
+```
+We can also look at Fst windows
+
+
+```{r}
+m40<-read_csv("meta/m40.csv")
+
+```
+
+
+```{sh}
+bcftools view outputs/104/renamed-05.vcf.gz -S bamlists/40.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/120/filt.vcf
+bgzip outputs/120/filt.vcf
+tabix outputs/120/filt.vcf.gz
+bcftools view -Ov -r NC_066833.1,NC_066856.1 outputs/120/filt.vcf.gz > outputs/120/twochroms.vcf
+bcftools view -Ov -r NC_066833.1,NC_066847.1,NC_066856.1 outputs/120/filt.vcf.gz > outputs/120/threechroms.vcf
+
+```
+
+Error: C stack usage 21536065 is too close to the limit
+```{r, eval=FALSE}
+
+#snps<-import.snpR.data("outputs/120/threechroms.vcf", sample.meta = dplyr::select(m40,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+
+snps<-import.snpR.data("outputs/120/threechroms.vcf", sample.meta = dplyr::select(m40,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+
+snps@snp.meta$CHROM<-gsub("\\.1","",snps@snp.meta$CHROM)
+p<-plot_clusters(snps, "NewPhenotype")
+p$plots$pca
+
+x<-calc_association(snps, response = "NewPheno", method = "chisq")
+y<-get.snpR.stats(x, stats="association")
+
+
+plot_manhattan(x, "chi_p_NewPheno", chr = "CHROM",
+               log.p = TRUE)$plot
+
+ggsave("outputs/120/snp-r-manhattan.jpeg")
+```
+
+```{r, eval=FALSE}
+y$single %>% mutate(Position=1:n()) %>% group_by(CHROM) %>%  mutate(BHfdr = p.adjust(chi_p_NewPheno, method = "BH")) %>% arrange(BHfdr) %>% write_csv("outputs/120/snpr-gwas-results.csv")
+```
+
+
+sliding window fst
+
+```{r}
+fst<-calc_pairwise_fst(snps, facets="CHROM.NewPheno", method="wc")
+fsts<-get.snpR.stats(fst, facets = "CHROM.NewPheno", stats = "fst")
+```
+
+```{r}
+outliers<-fsts$pairwise %>% as_tibble() %>% mutate(p99 = quantile(fst, probs = 0.999, na.rm = TRUE))  %>% filter(fst > p99)
+
+```
+
+```{r}
+ggplot(fsts$pairwise) +
+  geom_point(aes(x=position, y=fst), alpha=0.5)  +
+  geom_point(data=outliers, aes(x=position, y=fst), pch=21, fill="skyblue") +
+  facet_wrap(.~CHROM)
+```
+
+
+
+```{r}
+smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=100, step=50, triple_sigma = FALSE) #sigma=50, step=20
+smoothf<-get.snpR.stats(smooth, "CHROM.NewPheno", "pairwise.window") 
+```
+sigma	
+numeric. Designates the width of windows in kilobases. Full window size is 6*sigma or sigma kilobases depending on the triple_sigma argument.
+
+step	
+numeric or NULL, default default 2*sigma (non-overlapping windows). Designates the number of kilobases between each window centroid. If NULL, windows are centered on each SNP.
+
+
+
+```{r}
+outs<-smoothf %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
+
+ggplot(smoothf) +
+  geom_point(aes(x=position, y=fst), alpha=0.5) +
+  geom_point(data=outs, aes(x=position, y=fst), pch=21, fill="skyblue") +
+  facet_wrap(.~snp.subfacet, scales="free_x") +
+  theme_bw() +
+  ylab("Fst") +
+  xlab("Position")
+```
+
+
+These files are too big for me to run all together.
+
+Split chroms.
+
+```{sh, eval=FALSE}
+cat meta/lates-lgs.txt  | while read line; do bcftools view -Ov -r $line outputs/120/filt.vcf.gz  > outputs/119/vcfs/$line.vcf; done
+
+```
+
+```{r, eval=FALSE}
+files<-list.files("outputs/119/vcfs",pattern = "*vcf", full.names = TRUE)
+
+getWindows<-function(file) {
+  chrom<-gsub("outputs/119/vcfs/","",file)
+  chrom<-gsub(".1.vcf","", chrom)
+  snps<-import.snpR.data(file, sample.meta = dplyr::select(m40,NewPhenotype,NewPheno,specimen_id) %>% rename(FishID=specimen_id))
+  snps@snp.meta$CHROM<-gsub("\\.1","",snps@snp.meta$CHROM)
+
+  fst<-calc_pairwise_fst(snps, facets="CHROM.NewPheno", method="wc")
+#  fsts<-get.snpR.stats(fst, facets = "CHROM.NewPheno", stats = "fst")
+
+  smooth<-calc_smoothed_averages(fst, facets = "CHROM.NewPheno", stats.type="pairwise", sigma=100, step=50, triple_sigma = FALSE) #sigma=50, step=20
+  smoothf<-get.snpR.stats(smooth, "CHROM.NewPheno", "pairwise.window") 
+
+  write_csv(smoothf, paste0("outputs/119/",chrom,"-windows.csv"))
+}
+
+lapply(files, getWindows)
+
+```
+
+```{r}
+files<-list.files("outputs/119",pattern = "*windows.csv", full.names = TRUE)
+
+table<- map_df(files, read_csv, .id = "source_file")
+
+chroms<-read_tsv("meta/lates-lgs-named.txt")
+chroms$snp.subfacet<-gsub("\\.1$","",chroms$Chromosome)
+
+table<-left_join(table, chroms, by=c("snp.subfacet"="snp.subfacet"))
+table
+```
+
+
+```{r}
+outs<-table %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
+outs
+```
+
+```{r}
+ggplot(table) +
+  geom_point(aes(x=position, y=fst), alpha=0.5, size=1)  +
+  geom_point(data=outs, aes(x=position, y=fst), pch=21, fill="skyblue") +
+  facet_wrap(.~Chrom, ncol=4) +
+  ylab("Fst\n") +
+  xlab("\nPosition") +
+  theme_bw() +
+  theme(axis.title = element_text(size=14, face="bold"))
+
+ggsave("outputs/120/sliding-windows.pdf", width=11, height=8)
+ggsave("outputs/120/sliding-windows.jpeg", width=11, height=8)
+
+```
+
+Make like GWAS style
+
+```{r}
+nb.cols <- nrow(chroms)
+mycolors <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
+```
+
+
+```{r}
+t2<-table %>% mutate(Index=1:n())
+outs2<-t2 %>% mutate(p99 = quantile(fst, probs = 0.999, na.rm = TRUE)) %>% filter(fst > p99)
+outs3<-t2 %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
+
+labels<-t2 %>% group_by(Chrom) %>% summarize(Min=min(Index), Max=max(Index)) %>% mutate(Mid=(Min+Max)/2) %>% mutate(Steps=lag(Max))
+
+outs3 %>% group_by(Chrom) %>% summarise(Count=n())
+```
+
+```{r}
+fstb<-ggplot(t2 %>% filter(fst>=0)) +
+  geom_rect(data=labels, aes(xmin=Min, xmax=Max), ymin=0, ymax=0.25, fill=mycolors, alpha=0.25) +
+  geom_point(aes(x=Index, y=fst, color=Chrom), alpha=0.5) +
+  geom_point(data=outs3, aes(x=Index, y=fst), fill="black") +
+  theme_bw() +
+ # geom_hline(yintercept = min(outs2$fst), alpha=0.5, lty=2) +
+  geom_hline(yintercept = min(outs3$fst), alpha=0.5, lty=2) +
+
+  theme(panel.grid=element_blank()) +
+  scale_x_continuous(breaks=labels$Mid, labels = labels$Chrom) +
+  theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+  xlab("\nChromosome") +
+  ylab("Fst\n") +
+  theme(legend.position = "none") +
+  scale_color_manual(values=mycolors) +
+  theme(axis.title = element_text(face="bold", size=14))
+
+fstb
+
+
+```
+
+
+```{r}
+ggarrange(fsta + ggtitle("A") + theme(plot.title = element_text(size=14, face="bold")), 
+          fstb + ggtitle("B") + theme(plot.title = element_text(size=14, face="bold")),
+          ncol=1)
+
+ggsave("outputs/120/combined-plot.jpeg", width=8, height=8)
+ggsave("outputs/120/combined-plot.pdf", width=8, height=8)
+
+```
