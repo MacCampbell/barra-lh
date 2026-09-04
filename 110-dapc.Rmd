@@ -111,7 +111,7 @@ b2<-trainm %>% dplyr::select(specimen_id, NewPhenotype, Assign, SFF, SSS ) %>% a
 
 labels<-b2 %>% group_by(NewPhenotype) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
 
-ticks<-b2 %>% select(Index, specimen_id,NewPhenotype) %>% unique()
+ticks<-b2 %>% dplyr::select(Index, specimen_id,NewPhenotype) %>% unique()
 ```
 
 
@@ -182,11 +182,11 @@ post<-assign$posterior %>% as_tibble()
 #post<-bind_cols(mq,post) %>% arrange(Group, NewPhenotype,SSS) %>% mutate(Index=1:n())
 
 post<-bind_cols(assignm,post) %>% arrange(Group, NewPhenotype,SSS) %>% mutate(Index=1:n())
-post<-post %>% select(Index, Group, specimen_id, PlotPheno, SSS,SFF) %>% pivot_longer(5:6, names_to = "Predicted", values_to = "Posterior")
+post<-post %>% dplyr::select(Index, Group, specimen_id, PlotPheno, SSS,SFF) %>% pivot_longer(5:6, names_to = "Predicted", values_to = "Posterior")
 
 
 labels<-post %>% group_by(Group, PlotPheno) %>% summarize(Start=min(Index), Stop=max(Index), Position=mean(Index))
-ticks<-post %>% select(Index, specimen_id, PlotPheno) %>% unique()
+ticks<-post %>% dplyr::select(Index, specimen_id, PlotPheno) %>% unique()
 
 ```
 
@@ -215,4 +215,6 @@ ggplot(post) +
   ylim(0,1.03)
 
 ggsave("outputs/110/dapc-assignments.pdf", width=12, height = 6)
+ggsave("outputs/110/dapc-assignments.pdf", width=12, height = 6)
+
 ```

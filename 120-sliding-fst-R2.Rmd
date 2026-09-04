@@ -14,11 +14,11 @@ We can also look at Fst windows
 
 ```{r}
 m40<-read_csv("meta/m40.csv")
-
+m40
 ```
 
 
-```{sh}
+```{sh, eval=FALSE}
 bcftools view outputs/104/renamed-05.vcf.gz -S bamlists/40.names | bcftools +fill-tags -- -t MAF,F_MISSING | bcftools view -i 'F_MISSING < 0.05' | bcftools view -i 'INFO/MAF > 0.05' > outputs/120/filt.vcf
 bgzip outputs/120/filt.vcf
 tabix outputs/120/filt.vcf.gz
@@ -87,7 +87,7 @@ numeric or NULL, default default 2*sigma (non-overlapping windows). Designates t
 
 
 ```{r}
-outs<-smoothf %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
+outs<-smoothf %>% mutate(p99 = quantile(fst, probs = 0.999, na.rm = TRUE)) %>% filter(fst > p99)
 
 ggplot(smoothf) +
   geom_point(aes(x=position, y=fst), alpha=0.5) +
@@ -143,10 +143,31 @@ table
 ```
 
 
+
 ```{r}
-outs<-table %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst > p99)
-outs
+outs<-table %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter(fst >= p99)
+touts<-outs %>% dplyr::select(Chromosome, Chrom, position, fst)
+touts %>% write_csv("outputs/120/SupplementalTableS1.csv")
+
+touts %>% group_by(Chromosome, Chrom) %>% summarize(Count=n(), meanFst=mean(fst)) %>% arrange(-Count) %>% dplyr::select(Chrom, Count, meanFst) %>% write_csv("outputs/120/Supplemental Table S2.csv")
 ```
+
+```{r}
+souts<-table %>% mutate(p99 = quantile(fst, probs = 0.999, na.rm = TRUE)) %>% filter(fst >= p99)
+souts
+```
+
+Which windows contain outlier snps?
+```{r}
+touts %>% left_join(toanno, by=c("Chromosome"="CHROM")) %>% na.omit() %>% mutate(Diff=abs(position-POS)) %>% filter(Diff<=50000) %>% relocate(Diff) %>% arrange(Chrom, POS)
+
+touts %>% left_join(toanno, by=c("Chromosome"="CHROM")) %>% na.omit() %>% mutate(Diff=abs(position-POS)) %>% filter(Diff<=50000) %>% relocate(Diff) %>% arrange(Chrom, POS) %>% write_csv("outputs/120/combined.csv")
+```
+
+```{r}
+toanno
+```
+
 
 ```{r}
 ggplot(table) +
@@ -178,7 +199,7 @@ outs3<-t2 %>% mutate(p99 = quantile(fst, probs = 0.99, na.rm = TRUE)) %>% filter
 
 labels<-t2 %>% group_by(Chrom) %>% summarize(Min=min(Index), Max=max(Index)) %>% mutate(Mid=(Min+Max)/2) %>% mutate(Steps=lag(Max))
 
-outs3 %>% group_by(Chrom) %>% summarise(Count=n())
+outs3 %>% group_by(Chrom) %>% summarise(Count=n()) %>% arrange(-Count)
 ```
 
 ```{r}

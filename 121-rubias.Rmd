@@ -78,7 +78,6 @@ outliers
 ```
 
 
-bcftools view --include 'ID==@outs.csv' filt.vcf.gz > output.vcf
 
 bcftools view --include 'ID==@outs.csv' renamed-05.vcf.gz > output.vcf
 

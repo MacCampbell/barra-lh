@@ -211,7 +211,7 @@ outs %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(CHROM, 
 ```
 
 ```{r}
-outs %>% arrange(CHROM, POS) %>% dplyr::select(CHROM, POS, FST, qvalues, INFO) %>% write_csv("outputs/119/outlier-snpts.csv", col_names = FALSE)
+outs %>% arrange(CHROM, POS) %>% dplyr::select(CHROM, POS, FST, qvalues, INFO) %>% write_csv("outputs/119/outlier-snps.csv", col_names = TRUE)
 outs %>% arrange(CHROM, POS) %>% dplyr::select(CHROM, POS, FST, qvalues, INFO) %>% dplyr::select(CHROM, POS) %>% write_tsv("meta/snps-to-annotate-r2.tsv", col_names = FALSE)
 
 ```

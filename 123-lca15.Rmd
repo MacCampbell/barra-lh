@@ -1,0 +1,493 @@
+---
+title: "123-lca15"
+output: html_document
+date: "2026-07-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(vcfR)
+library(adegenet)
+library(ggpubr)
+```
+
+```{r}
+mq<-read_csv("meta/mq.csv")
+mq
+```
+
+There's two small elevated windows of LD on lca15
+
+```{r}
+file<-"outputs/107/vcfs/NC_066847.1.ldf.ld"
+  chrom<-gsub("outputs/107/vcfs/","",file)
+  chrom<-gsub(".ldf.ld","", chrom)
+  lc<-read.delim(file,sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.2)
+
+chromld<- ggplot(lc) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle(paste0(chrom))+
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  xlab("SNP Position A") +
+  ylab("SNP Position B")
+
+chromld
+```
+Let's look at these in more detail.
+
+outputs/105/renamed-05.vcf.gz are our unthinned variants. So, let's zoom in on 'regions'
+
+outlier windows are
+
+33630	NC_066847.1	Lca15	13300000	0.12709919	13333630	0.3347389	6.016872e-03	PR	AC=32	
+16370	NC_066847.1	Lca15	13350000	0.15687052	13333630	0.3347389	6.016872e-03	PR	AC=32	
+13426	NC_066847.1	Lca15	13350000	0.15687052	13363426	0.3131144	9.498987e-03	PR	AC=34	
+36574	NC_066847.1	Lca15	13400000	0.13383349	13363426	0.3131144	9.498987e-03	PR	AC=34	
+26269	NC_066847.1	Lca15	13350000	0.15687052	13376269	0.3131144	9.498987e-03	PR	AC=34	
+23731	NC_066847.1	Lca15	13400000	0.13383349	13376269	0.3131144	9.498987e-03	PR	AC=34	
+37316	NC_066847.1	Lca15	17550000	0.05055258	17587316	0.3239579	7.530711e-03	PR	AC=24	
+12684	NC_066847.1	Lca15	17600000	0.11329964	17587316	0.3239579	7.530711e-03	PR	AC=24	
+17454	NC_066847.1	Lca15	27800000	0.03285632	27782546	0.3415812	6.016872e-03	PR	AC=13	
+17410	NC_066847.1	Lca15	27800000	0.03285632	27782590	0.3353902	6.016872e-03	PR	AC=13	
+17389	NC_066847.1	Lca15	27800000	0.03285632	27782611	0.3353902	6.016872e-03	PR	AC=13	
+16956	NC_066847.1	Lca15	27800000	0.03285632	27783044	0.3353902	6.016872e-03	PR	AC=13	
+
+13250000 - 13450000 (~2e5 bp)
+17500000 - 17650000
+
+
+subreiong three
+```{sh, eval=FALSE}
+bcftools view -r NC_066847.1:12000000-19000000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region.vcf
+bcftools view -r NC_066847.1:13250000-13450000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region1.vcf
+bcftools view -r NC_066847.1:17500000-18250000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region2.vcf
+bcftools view -r NC_066847.1:27700000-27800000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region3.vcf
+
+for f in *.vcf; do plink --vcf $f --r2 inter-chr --ld-window-r2 0.2 --out `basename $f vcf`ldf --allow-extra-chr --double-id; done;
+
+```
+
+
+```{r}
+ld<-read.delim("outputs/123/vcfs/lca15-region.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.3)
+
+ldregion<-ggplot(ld) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle(paste0(chrom))+
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  xlab("SNP Position A") +
+  ylab("SNP Position B")
+ldregion
+ggsave("outputs/123/lca15-high-ld-regions.jpeg")
+```
+
+
+The variants are highly correlated across these blocks
+
+```{r}
+ld<-read.delim("outputs/123/vcfs/lca15-region1.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.3)
+
+ld1<-ggplot(ld) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle(paste0(chrom))+
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  xlab("SNP Position A") +
+  ylab("SNP Position B")
+ld1
+ggsave("outputs/123/lca15-high-ld-region-1.jpeg")
+```
+
+```{r}
+ld<-read.delim("outputs/123/vcfs/lca15-region2.ldf.ld",sep="",stringsAsFactors=FALSE) %>% as_tibble() %>% dplyr::arrange(R2) %>%  filter(R2 >0.3)
+
+ld2<-ggplot(ld) +
+  geom_point(aes(x=BP_A, y=BP_B, color=R2), alpha=0.5) +
+  scale_color_gradient(low="khaki1", high="red") + 
+  ggtitle(paste0(chrom))+
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  xlab("SNP Position A") +
+  ylab("SNP Position B")
+ld2
+ggsave("outputs/123/lca15-high-ld-region-2.jpeg")
+```
+
+Let's look at a pca
+
+
+```{r}
+vcf<-read.vcfR(file="outputs/123/vcfs/lca15-region1.vcf")
+
+genind<-vcfR2genind(vcf)
+genind@pop<-as.factor(mq$NewPhenotype)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(mq)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") +
+  scale_fill_manual(values=c("red","blue","grey"))
+pc12
+
+```
+
+loadings
+
+```{r}
+loads<-pca1$c1 %>% as_tibble()
+loads$locus<-rownames(pca1$c1)
+loads %>% arrange(-CS1) %>% relocate(locus) %>% filter(CS1 > 0.07)
+```
+
+```{r}
+snps<-import.snpR.data(genotypes = "outputs/123/vcfs/lca15-region1.vcf", 
+      sample.meta = mq %>% dplyr::select(specimen_id,NewPhenotype))
+```
+
+```{r}
+hets<-calc_hs(snps)
+ho<-get.snpR.stats(hets, stats="hs")
+h2o<-ho$sample %>% dplyr::select(specimen_id, NewPhenotype, hs)
+h2o
+df2<-df %>% left_join(h2o)
+```
+```{r}
+hplot<-ggplot(df2) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=hs),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "right") +
+  scale_fill_viridis_c(option="viridis")
+hplot
+```
+
+```{r}
+df3<-df2 %>% mutate(Genotype=ifelse(Axis1 < -8, "Ancestral", ifelse(Axis1 >= -8 & Axis1 <= 8, "Heterozygote","Derived")))
+df3$Genotype<-factor(df3$Genotype, levels=c("Ancestral","Heterozygote","Derived"))
+df3<-df3 %>% mutate(Category=ifelse(NewPhenotype=="SFF","Migratory",ifelse(NewPhenotype=="SSS","Resident","UNK")))
+df3 %>% ggplot() + geom_point(aes(x=Axis1, y=Axis2, fill=Genotype),pch=21, alpha=0.75, cex=2) 
+```
+```{r}
+hplotb<-ggplot(df3) +
+  geom_boxplot(aes(x=Genotype, y=hs, fill=Genotype)) +
+  theme_bw() +
+  ylab("Individual Heterozygosity Hs") +
+  theme(panel.grid = element_blank())  +
+  scale_fill_viridis_d(option="magma", alpha=0.7) +
+  theme(legend.position = "none")
+hplotb 
+```
+
+
+Let's look at genotype frequencies from the burdekin
+
+```{r}
+df3 %>% filter(Group=="Burdekin") %>% group_by(NewPhenotype, Genotype) %>% summarize(Count=n()) %>% ungroup() %>% group_by(NewPhenotype) 
+```
+
+F(A) in catadromous fish = (2+9)/42 = 0.26
+F(A) in resident fish    = (14+12)/46 = 0.565
+
+```{r}
+pcaplot<-df3 %>% filter(Group=="Burdekin") %>% ggplot() + geom_point(aes(x=Axis1, y=Axis2, fill=Genotype),pch=21, alpha=0.75, cex=2) +
+  facet_grid(Category~.) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "bottom") +
+  scale_fill_viridis_d(option="magma")
+
+pcaplot
+```
+
+
+
+```{r}
+df3<-df2 %>% mutate(Genotype=ifelse(Axis1 < -8, "Ancestral", ifelse(Axis1 >= -8 & Axis1 <= 8, "Heterozygote","Derived")))
+df3$Genotype<-factor(df3$Genotype, levels=c("Ancestral","Heterozygote","Derived"))
+
+df3 %>% ggplot() + geom_point(aes(x=Axis1, y=Axis2, fill=Genotype),pch=21, alpha=0.75, cex=2) 
+
+
+```
+```{r}
+hplotb<-ggplot(df3) +
+  geom_boxplot(aes(x=Genotype, y=hs, fill=Genotype)) +
+  theme_bw() +
+  ylab("Individual Heterozygosity Hs") +
+  theme(panel.grid = element_blank())  +
+  scale_fill_viridis_d(option="magma", alpha=0.7) +
+  theme(legend.position = "none")
+hplotb 
+
+df3 %>% group_by(Genotype) %>% summarize(Count=n())
+```
+
+
+Let's look at genotype frequencies from the burdekin
+
+```{r}
+df3 %>% filter(Group=="Burdekin") %>% group_by(NewPhenotype, Genotype) %>% summarize(Count=n()) %>% ungroup() %>% group_by(NewPhenotype) 
+```
+
+F(A) in catadromous fish = (2+9)/44 = 0.25
+F(A) in resident fish    = (14+12)/44 = 0.59
+
+mutate(Error=sqrt((Frequency*(1-Frequency))/(2*N )))
+```{r}
+pheno<-c("Migratory","Resident")
+Frequency<-c(((2*1)+9)/(2+18+24),((2*7)+12)/(14+24+6))
+sizes<-c(((1+9+12)*2),((7+12+3)*2))
+
+
+t1<-cbind(pheno, Frequency, sizes) %>% as_tibble() 
+t1$Frequency<-as.numeric(t1$Frequency)
+t1$sizes<-as.numeric(t1$sizes)
+t1 <- t1 %>% mutate(N = sizes/2) %>% mutate(Error=sqrt((Frequency*(1-Frequency))/(2*N )))
+
+fplot<-t1 %>% ggplot() +
+   geom_segment(aes(x=pheno, xend=pheno, y=Frequency-Error, yend=Frequency+Error)) +
+    geom_point(aes(x=pheno, y=Frequency, fill=pheno), pch=21, cex=2) +
+
+  ylim(0,1) +
+  theme_bw() +
+  ylab("Frequency of Ancestral Form") +
+  xlab("Phenotype") +
+  scale_fill_manual(values=c("red","blue")) +
+  theme(legend.position = "none")
+
+fplot
+```
+```{r}
+everyone<-df3  %>% group_by(Group, NewPhenotype, Genotype) %>% summarize(Count=n()) %>% ungroup() %>% pivot_wider(id_cols = c("Group", "NewPhenotype"), names_from = Genotype, values_from = Count)
+
+everyone[is.na(everyone)]<-0
+everyone %>%  group_by(Group, NewPhenotype) %>% mutate(AncestralCount=(sum((Ancestral*2)+Heterozygote))) %>% mutate(Total=2*(Ancestral+Heterozygote+Derived)) %>% mutate(AncestralFeq=AncestralCount/Total) 
+
+```
+```{r}
+prop.test(x=c(11, 26), n=c(44,44), alternative = "two.sided")
+
+```
+
+```{r}
+ggarrange(chromld + ggtitle("A") + theme(plot.title=element_text(face="bold")), 
+          ldregion + ggtitle("B") + theme(plot.title=element_text(face="bold")),
+          ld1 + ggtitle("C") + theme(plot.title=element_text(face="bold")), 
+          ld2 + ggtitle("D") + theme(plot.title=element_text(face="bold")))
+
+
+ggsave("outputs/123/lca-15-ld-plots.jpeg", width=10, height=7)
+```
+
+PCAs and heterozygosity plots
+
+```{r}
+ggarrange(hplot + ggtitle("A") + theme(plot.title=element_text(face="bold")) + labs(fill="Hs"),
+          hplotb + ggtitle("B") + theme(plot.title=element_text(face="bold")) + ylab("\nIndividual Heterozygosity (Hs)"),
+          pcaplot + ggtitle("C") + theme(plot.title=element_text(face="bold")), 
+          fplot + ggtitle("D") + ylab("\nFrequency of Ancestral Form"),
+          heights = c(1,1))
+
+ggsave("outputs/123/lca-15-pca-plots.jpeg", width=9, height=8)
+
+```
+
+
+## Region 2
+
+Let's look at a pca
+
+
+```{r}
+vcf<-read.vcfR(file="outputs/123/vcfs/lca15-region2.vcf")
+
+genind<-vcfR2genind(vcf)
+genind@pop<-as.factor(mq$NewPhenotype)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(mq)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") +
+  scale_fill_manual(values=c("red","blue","grey"))
+pc12
+
+```
+
+```{r}
+snps<-import.snpR.data(genotypes = "outputs/123/vcfs/lca15-region2.vcf", 
+      sample.meta = mq %>% dplyr::select(specimen_id,NewPhenotype))
+```
+
+```{r}
+hets<-calc_hs(snps)
+ho<-get.snpR.stats(hets, stats="hs")
+h2o<-ho$sample %>% dplyr::select(specimen_id, NewPhenotype, hs)
+h2o
+df2<-df %>% left_join(h2o)
+```
+```{r}
+hplot<-ggplot(df2) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=hs),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "right") +
+  scale_fill_viridis_c(option="viridis")
+hplot
+```
+
+```{r}
+df3<-df2 %>% mutate(Genotype=ifelse(Axis1 < -8, "Ancestral", ifelse(Axis1 >= -8 & Axis1 <= 8, "Heterozygote","Derived")))
+df3$Genotype<-factor(df3$Genotype, levels=c("Ancestral","Heterozygote","Derived"))
+
+df3 %>% ggplot() + geom_point(aes(x=Axis1, y=Axis2, fill=Genotype),pch=21, alpha=0.75, cex=2) 
+
+
+```
+```{r}
+hplotb<-ggplot(df3) +
+  geom_boxplot(aes(x=Genotype, y=hs, fill=Genotype)) +
+  theme_bw() +
+  ylab("Individual Heterozygosity Hs") +
+  theme(panel.grid = element_blank())  +
+  scale_fill_viridis_d(option="magma", alpha=0.7) +
+  theme(legend.position = "none")
+hplotb 
+```
+
+
+Let's look at genotype frequencies from the burdekin
+
+```{r}
+df3 %>% filter(Group=="Burdekin") %>% group_by(NewPhenotype, Genotype) %>% summarize(Count=n()) %>% ungroup() %>% group_by(NewPhenotype) 
+```
+
+F(A) in catadromous fish = (2+9)/42 = 0.26
+F(A) in resident fish    = (14+12)/46 = 0.565
+
+```{r}
+pcaplot<-df3 %>% filter(Group=="Burdekin") %>% ggplot() + geom_point(aes(x=Axis1, y=Axis2, fill=Genotype),pch=21, alpha=0.75, cex=2) +
+  facet_grid(NewPhenotype~.) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "bottom") +
+  scale_fill_viridis_d(option="magma")
+
+pcaplot
+```
+
+
+## Region 3
+
+Let's look at a pca
+
+
+```{r}
+vcf<-read.vcfR(file="outputs/123/vcfs/lca15-region3.vcf")
+
+genind<-vcfR2genind(vcf)
+genind@pop<-as.factor(mq$NewPhenotype)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(mq)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") +
+  scale_fill_manual(values=c("red","blue","grey"))
+pc12
+
+```
+
+```{r}
+snps<-import.snpR.data(genotypes = "outputs/123/vcfs/lca15-region3.vcf", 
+      sample.meta = mq %>% dplyr::select(specimen_id,NewPhenotype))
+```
+
+```{r}
+hets<-calc_hs(snps)
+ho<-get.snpR.stats(hets, stats="hs")
+h2o<-ho$sample %>% dplyr::select(specimen_id, NewPhenotype, hs)
+h2o
+df2<-df %>% left_join(h2o)
+```
+```{r}
+hplot<-ggplot(df2) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=hs),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "right") +
+  scale_fill_viridis_c(option="viridis")
+hplot
+```
+
+If you wish to put a little money to it, the most cost effective and smartest thing to do is to put this on a NovaSeq X 10B lane (360Gb)
+
+ 
+
+It would be $2350.00 for the lane, plus $130 per sample for library prep. Total for 18 samples = $4690.00 (about $260.00 per sample). The amount payable after including the fund would be $2583.50
+
+1800 GB / 360 = 5 lanes

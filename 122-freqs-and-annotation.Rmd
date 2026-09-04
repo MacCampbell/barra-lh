@@ -15,7 +15,40 @@ library(tidyverse)
 
 bcftools view --regions-file meta/snps-to-annotate-r2.tsv outputs/105/renamed-05.vcf.gz -Ov -o meta/snps-to-annotate-r2.vcf
 
-srun -p bmh -t 02:00:00 --nodes=1 --threads=4 --mem=16GB java -Xmx10g -jar snpEff.jar GCF001640805.2 ~/barra-lh/meta/snps-to-annotate.vcf > snps.ann.vcf
+
+ASB_LG1	NC_066833.1
+ASB_LG2	NC_066834.1
+ASB_LG3	NC_066835.1
+ASB_LG4	NC_066836.1
+ASB_LG5	NC_066837.1
+ASB_LG6	NC_066838.1
+ASB_LG7_1	NC_066839.1
+ASB_LG8	NC_066840.1
+ASB_LG9	NC_066841.1
+ASB_LG10	NC_066842.1
+ASB_LG11	NC_066843.1
+ASB_LG12	NC_066844.1
+ASB_LG13	NC_066845.1
+ASB_LG14	NC_066846.1
+ASB_LG15	NC_066847.1
+ASB_LG16_LG22	NC_066848.1
+ASB_LG17	NC_066849.1
+ASB_LG18	NC_066850.1
+ASB_LG19	NC_066851.1
+ASB_LG20	NC_066852.1
+ASB_LG21	NC_066853.1
+ASB_LG7_2	NC_066854.1
+ASB_LG23	NC_066855.1
+ASB_LG24	NC_066856.1
+
+
+Need to recode
+
+/Users/mac/github/SnpEff
+
+java -Xmx10g -jar snpEff.jar TLL_Latcal.v3.RefSeq ../barra-lh/meta/snps-to-annotate-r2-recoded.vcf > snps-annotated-r2.vcf
+
+(base) ➜  SnpEff git:(master) ✗ cp snps-annotated-r2.vcf ~/github/barra-lh/outputs/121      
 
 ```{r}
 toanno<-read_csv("outputs/119/outlier-snps.csv") %>% separate(INFO, sep=";", into=c("PR","AC","AN","F_MISSING","MAF"))
@@ -23,5 +56,83 @@ toanno$MAF<-gsub("MAF=","",toanno$MAF)
 toanno$MAF<-as.numeric(toanno$MAF)
 chroms<-read_tsv("meta/lates-lgs-named.txt")
 
-toanno %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(Chrom,POS, MAF, FST, qvalues)
+toanno %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(Chrom,POS, MAF, FST, qvalues) %>% mutate(MAF=round(MAF,2), FST=round(FST,2)) %>% group_by(Chrom) %>% summarize(Count=n()) %>% arrange(-Count)
+```
+```{r}
+toanno %>% left_join(chroms, by=c("CHROM"="Chromosome")) %>% dplyr::select(Chrom,POS, MAF, FST, qvalues) %>% mutate(MAF=round(MAF,2), FST=round(FST,2)) %>% filter(Chrom=="Lca24") %>% arrange(POS)
+```
+R;ANN=A|intron_variant|MODIFIER|LOC108884286|LOC108884286|transcript|XM_018678105.2|protein_coding|18/46|c.1194+31G>A||||||,A|intron_variant|MODIFIER|LOC108884286|LOC108884286|transcript|XM_018678108.2|protein_coding|18/46|c.1110+31G>A||||||,A|intron_variant|MODIFIER|LOC108884286|LOC108884286|transcript|XM_018678107.1|protein_coding|18/46|c.1110+31G>A||||||,A|intron_variant|MODIFIER|LOC108884286|LOC108884286|transcript|XM_051069868.1|protein_coding|17/45|c.1143+31G>A||||||
+PR;ANN=C|downstream_gene_variant|MODIFIER|keap1b|keap1b|transcript|XM_018665037.2|protein_coding||c.*3263A>G|||||1336|,C|intron_variant|MODIFIER|LOC127142488|LOC127142488|transcript|XR_007813271.1|pseudogene|1/1|n.10+70376A>G||||||,C|intron_variant|MODIFIER|si:zfos-323e3.4|si:zfos-323e3.4|transcript|XM_018665036.2|protein_coding|1/2|c.-19+242A>G||||||,C|intron_variant|MODIFIER|LOC127142488|LOC127142488|transcript|XR_007813272.1|pseudogene|1/1|n.10+79551A>G||||||
+PR;ANN=G|3_prime_UTR_variant|MODIFIER|slc6a11b|slc6a11b|transcript|XM_018686879.2|protein_coding|15/15|c.*770T>C|||||770|,G|downstream_gene_variant|MODIFIER|LOC108890090|LOC108890090|transcript|XR_001962102.2|pseudogene||n.*1775A>G|||||1775|
+PR;ANN=G|3_prime_UTR_variant|MODIFIER|slc6a11b|slc6a11b|transcript|XM_018686879.2|protein_coding|15/15|c.*657T>C|||||657|,G|downstream_gene_variant|MODIFIER|LOC108890090|LOC108890090|transcript|XR_001962102.2|pseudogene||n.*1888A>G|||||1888|
+PR;ANN=G|intron_variant|MODIFIER|LOC108886110|LOC108886110|transcript|XM_051076408.1|protein_coding|6/11|c.943-658A>G||||||
+PR;ANN=A|intergenic_region|MODIFIER|ggctb-LOC108886107|ggctb-LOC108886107|intergenic_region|ggctb-LOC108886107|||n.13363426C>A||||||
+PR;ANN=A|intergenic_region|MODIFIER|ggctb-LOC108886107|ggctb-LOC108886107|intergenic_region|ggctb-LOC108886107|||n.13376269G>A||||||
+PR;ANN=T|intron_variant|MODIFIER|grik2|grik2|transcript|XM_018665721.1|protein_coding|6/15|c.955-19563A>T||||||,T|intron_variant|MODIFIER|grik2|grik2|transcript|XM_051076104.1|protein_coding|7/16|c.955-19563A>T||||||,T|intron_variant|MODIFIER|grik2|grik2|transcript|XM_051076105.1|protein_coding|7/16|c.955-19563A>T||||||,T|intron_variant|MODIFIER|grik2|grik2|transcript|XM_018665722.1|protein_coding|6/15|c.955-19563A>T||||||
+PR;ANN=A|intergenic_region|MODIFIER|zhx2a-LOC127143356|zhx2a-LOC127143356|intergenic_region|zhx2a-LOC127143356|||n.27782546G>A||||||
+PR;ANN=T|intergenic_region|MODIFIER|zhx2a-LOC127143356|zhx2a-LOC127143356|intergenic_region|zhx2a-LOC127143356|||n.27782590C>T||||||
+PR;ANN=G|intergenic_region|MODIFIER|zhx2a-LOC127143356|zhx2a-LOC127143356|intergenic_region|zhx2a-LOC127143356|||n.27782611A>G||||||
+PR;ANN=C|intergenic_region|MODIFIER|zhx2a-LOC127143356|zhx2a-LOC127143356|intergenic_region|zhx2a-LOC127143356|||n.27783044A>C||||||
+PR;ANN=C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667033.2|protein_coding|8/17|c.625-26874T>C||||||,C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667034.2|protein_coding|8/17|c.625-26874T>C||||||,C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667035.2|protein_coding|8/16|c.625-26874T>C||||||
+PR;ANN=C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667033.2|protein_coding|8/17|c.625-26844G>C||||||,C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667034.2|protein_coding|8/17|c.625-26844G>C||||||,C|intron_variant|MODIFIER|macrod2|macrod2|transcript|XM_018667035.2|protein_coding|8/16|c.625-26844G>C||||||
+PR;ANN=T|intron_variant|MODIFIER|mkxa|mkxa|transcript|XM_018698283.2|protein_coding|5/6|c.856+1234G>A||||||
+PR;ANN=T|intron_variant|MODIFIER|mkxa|mkxa|transcript|XM_018698283.2|protein_coding|5/6|c.856+934C>A||||||
+PR;ANN=C|intergenic_region|MODIFIER|odad2-mpp7a|odad2-mpp7a|intergenic_region|odad2-mpp7a|||n.2992178T>C||||||
+PR;ANN=A|intergenic_region|MODIFIER|odad2-mpp7a|odad2-mpp7a|intergenic_region|odad2-mpp7a|||n.2992188G>A||||||
+PR;ANN=T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698211.2|protein_coding||c.*7014C>A|||||4771|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698213.2|protein_coding||c.*7014C>A|||||4771|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066598.1|protein_coding||c.*7014C>A|||||4771|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066596.1|protein_coding||c.*7014C>A|||||4771|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066597.1|protein_coding||c.*7014C>A|||||4771|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066599.1|protein_coding||c.*7014C>A|||||4771|,T|intergenic_region|MODIFIER|odad2-mpp7a|odad2-mpp7a|intergenic_region|odad2-mpp7a|||n.2993681G>T||||||
+PR;ANN=T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698211.2|protein_coding||c.*5632G>A|||||3389|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698213.2|protein_coding||c.*5632G>A|||||3389|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066598.1|protein_coding||c.*5632G>A|||||3389|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066596.1|protein_coding||c.*5632G>A|||||3389|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066597.1|protein_coding||c.*5632G>A|||||3389|,T|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066599.1|protein_coding||c.*5632G>A|||||3389|,T|intergenic_region|MODIFIER|odad2-mpp7a|odad2-mpp7a|intergenic_region|odad2-mpp7a|||n.2995063C>T||||||
+PR;ANN=G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698211.2|protein_coding||c.*3702A>C|||||1459|,G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698213.2|protein_coding||c.*3702A>C|||||1459|,G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066598.1|protein_coding||c.*3702A>C|||||1459|,G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066596.1|protein_coding||c.*3702A>C|||||1459|,G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066597.1|protein_coding||c.*3702A>C|||||1459|,G|downstream_gene_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066599.1|protein_coding||c.*3702A>C|||||1459|,G|intergenic_region|MODIFIER|odad2-mpp7a|odad2-mpp7a|intergenic_region|odad2-mpp7a|||n.2996993T>G||||||
+PR;ANN=C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698211.2|protein_coding|16/16|c.1552-510T>G||||||,C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_018698213.2|protein_coding|16/16|c.1552-510T>G||||||,C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066598.1|protein_coding|18/18|c.1552-510T>G||||||,C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066596.1|protein_coding|18/18|c.1552-510T>G||||||,C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066597.1|protein_coding|17/17|c.1552-510T>G||||||,C|intron_variant|MODIFIER|mpp7a|mpp7a|transcript|XM_051066599.1|protein_coding|17/17|c.1552-510T>G||||||
+PR;ANN=A|intergenic_region|MODIFIER|cdh19-LOC108900007|cdh19-LOC108900007|intergenic_region|cdh19-LOC108900007|||n.16166923G>A||||||
+PR;ANN=A|intergenic_region|MODIFIER|cdh19-LOC108900007|cdh19-LOC108900007|intergenic_region|cdh19-LOC108900007|||n.16177028G>A||||||
+PR;ANN=G|intergenic_region|MODIFIER|cdh19-LOC108900007|cdh19-LOC108900007|intergenic_region|cdh19-LOC108900007|||n.16178001A>G||||||
+
+
+# Now I need to calculate MAF
+
+need poplists
+
+```{r}
+pops<-read_csv(file = "meta/mq.csv")
+pops %>% filter(Group=="Burdekin") %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/burdekin.names", col_names = FALSE)
+pops %>% filter(Group=="Daly River") %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/daly.names", col_names = FALSE)
+pops %>% filter(Group=="Roper River") %>% dplyr::select(specimen_id) %>% write_tsv("bamlists/roper.names", col_names = FALSE)
+pops %>% filter(Group=="FitzroyQLD") %>%  dplyr::select(specimen_id) %>% write_tsv("bamlists/fitz.names", col_names = FALSE)
+
+
+```
+
+
+```{sh, eval=FALSE}
+bcftools view -S bamlists/burdekin.names meta/snps-to-annotate-r2.vcf | bcftools +fill-tags -- -t MAF | grep -v "##" | cut -f 1,2,8 > outputs/122/burd.tsv
+
+bcftools view -S bamlists/daly.names meta/snps-to-annotate-r2.vcf | bcftools +fill-tags -- -t MAF | grep -v "##" | cut -f 1,2,8 > outputs/122/daly.tsv
+
+bcftools view -S bamlists/roper.names meta/snps-to-annotate-r2.vcf | bcftools +fill-tags -- -t MAF | grep -v "##" | cut -f 1,2,8 > outputs/122/roper.tsv
+
+bcftools view -S bamlists/fitz.names meta/snps-to-annotate-r2.vcf | bcftools +fill-tags -- -t MAF | grep -v "##" | cut -f 1,2,8 > outputs/122/fitz.tsv
+```
+
+```{R}
+burd<-read_tsv("outputs/122/burd.tsv") %>% mutate(Pop="Burdekin")
+daly<-read_tsv("outputs/122/daly.tsv") %>% mutate(Pop="Daly")
+rope<-read_tsv("outputs/122/roper.tsv")%>% mutate(Pop="Roper")
+fitz<-read_tsv("outputs/122/fitz.tsv") %>% mutate(Pop="Fitz")
+c<-bind_rows(burd,daly,rope,fitz)
+c<-c %>% separate(INFO, sep=";", into=c("PR","AC","AN","MAF"))
+c$MAF<-gsub("MAF=","",c$MAF)
+c$MAF<-as.numeric(c$MAF)
+c$MAF<-round(c$MAF, 2)
+c<-c %>% left_join(chroms, by=c("#CHROM"="Chromosome")) %>% dplyr::select(Chrom, POS, Pop, MAF) %>% na.omit()
+
+d<- c%>%
+  pivot_wider(id_cols=c("Chrom","POS"), names_from = c("Pop"), values_from = c("MAF")) %>%
+  relocate(Chrom, POS, Daly, Roper, Burdekin, Fitz)
+
+d %>% write_tsv("outputs/122/MAFs.tsv")
+d
+```
+
+```{r}
+c  %>% group_by(Pop) %>% filter(MAF == 0) %>% summarise(Count=n())
 ```
