@@ -60,8 +60,39 @@ meta<-m118
 ```
 ```{sh, eval=FALSE}
 srun -t 2:00:00 -p bmh --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
--minInd 112 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 112 -bam bamlists/118.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
 -r NC_066847.1:13250000-13450000 -out outputs/201/lca15-01  \
 -minMaf 0.10 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doVcf 1  > outputs/201/lca15-01.out 2> outputs/201/lca15-01.err &
+
+bcftools reheader --samples bamlists/118.names -o outputs/201/lca15-renamed-10.vcf.gz outputs/201/lca15-01.vcf.gz
+
+```
+
+
+```{r}
+vcf<-read.vcfR(file="outputs/201/lca15-renamed-10.vcf.gz")
+
+genind<-vcfR2genind(vcf)
+genind@pop<-as.factor(meta$NewPhenotype)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(meta)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=Lineage), pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") 
+pc12
 ```
