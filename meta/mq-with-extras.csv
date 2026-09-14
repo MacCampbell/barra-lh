@@ -91,13 +91,29 @@ WJC9558,WJC9558,WJC9558,SFF,182258858,160381793,27.9758,1,/home/maccamp/lates-wg
 WJC9559,WJC9559,WJC9559,SFF,213454180,176211095,29.0693,1,/home/maccamp/lates-wgs/data/taiwan/WJC9559.sort.flt.bam,1,SFF,Tamsui River,WJC9559,Southeast Asian
 WJC9560,WJC9560,WJC9560,SFF,341617052,275059504,42.7225,1,/home/maccamp/lates-wgs/data/taiwan/WJC9560.sort.flt.bam,1,SFF,Tamsui River,WJC9560,Southeast Asian
 WJC9188,WJC9188,WJC9188,SFF,207927816,175269565,27.8819,1,/home/maccamp/lates-wgs/data/taiwan/WJC9188.sort.flt.bam,1,SFF,Tamsui River,WJC9188,Southeast Asian
-OceanPick11,OceanPick-11,OceanPick11,UNK,219131763,197941889,39.5505,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick11.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick11,Sri Lankan Aquaculture
-OceanPick15,OceanPick-15,OceanPick15,UNK,188158129,170706185,35.4193,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick15.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick15,Sri Lankan Aquaculture
-OceanPick16,OceanPick-16,OceanPick16,UNK,196110273,181111429,37.1622,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick16.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick16,Sri Lankan Aquaculture
-OceanPick17,OceanPick-17,OceanPick17,UNK,199866113,166303991,33.8201,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick17.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick17,Sri Lankan Aquaculture
-OceanPick1,OceanPick-1,OceanPick1,UNK,188316323,170206826,32.8365,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick1.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick1,Sri Lankan Aquaculture
-OceanPick20,OceanPick-20,OceanPick20,UNK,318657978,262489587,51.0267,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick20.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick20,Sri Lankan Aquaculture
-OceanPick2,OceanPick-2,OceanPick2,UNK,245082767,225339177,44.2617,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick2.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick2,Sri Lankan Aquaculture
-OceanPick3,OceanPick-3,OceanPick3,UNK,247805625,227493701,46.8712,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick3.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick3,Sri Lankan Aquaculture
-OceanPick5,OceanPick-5,OceanPick5,UNK,188234929,171410968,35.3293,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick5.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick5,Sri Lankan Aquaculture
-OceanPick8,OceanPick-8,OceanPick8,UNK,283512102,214149643,43.0619,NA,/home/maccamp/lates-wgs/data/hatcheries/OceanPick8.sort.flt.bam,NA,UNK,Sri Lankan Aquaculture,OceanPick8,Sri Lankan Aquaculture
+Mannar1,Mannar1,Mannar1,UNK,170579154,156344455,33.5926,NA,/home/maccamp/lates-wgs/data/lakdiva/Mannar1.sort.flt.bam,NA,UNK,Sri Lanka,Mannar1,Indian Ocean
+Mannar2,Mannar2,Mannar2,UNK,227608517,207348482,44.4537,NA,/home/maccamp/lates-wgs/data/lakdiva/Mannar2.sort.flt.bam,NA,UNK,Sri Lanka,Mannar2,Indian Ocean
+Mannar3,Mannar3,Mannar3,UNK,169924454,156470189,33.6783,NA,/home/maccamp/lates-wgs/data/lakdiva/Mannar3.sort.flt.bam,NA,UNK,Sri Lanka,Mannar3,Indian Ocean
+Mannar4,Mannar4,Mannar4,UNK,164628843,151791778,32.5849,NA,/home/maccamp/lates-wgs/data/lakdiva/Mannar4.sort.flt.bam,NA,UNK,Sri Lanka,Mannar4,Indian Ocean
+Mannar5,Mannar5,Mannar5,UNK,181768421,167927046,35.9875,NA,/home/maccamp/lates-wgs/data/lakdiva/Mannar5.sort.flt.bam,NA,UNK,Sri Lanka,Mannar5,Indian Ocean
+Trinco1,Trinco1,Trinco1,UNK,178880107,165159022,35.2784,NA,/home/maccamp/lates-wgs/data/lakdiva/Trinco1.sort.flt.bam,NA,UNK,Sri Lanka,Trinco1,Indian Ocean
+Trinco2,Trinco2,Trinco2,UNK,224532124,204504256,43.683,NA,/home/maccamp/lates-wgs/data/lakdiva/Trinco2.sort.flt.bam,NA,UNK,Sri Lanka,Trinco2,Indian Ocean
+Trinco3,Trinco3,Trinco3,UNK,202042003,184403195,38.9953,NA,/home/maccamp/lates-wgs/data/lakdiva/Trinco3.sort.flt.bam,NA,UNK,Sri Lanka,Trinco3,Indian Ocean
+Jaffna1,Jaffna1,Jaffna1,UNK,197344375,182324259,38.8621,NA,/home/maccamp/lates-wgs/data/lakdiva/Jaffna1.sort.flt.bam,NA,UNK,Sri Lanka,Jaffna1,Indian Ocean
+Jaffna2,Jaffna2,Jaffna2,UNK,239460438,218331434,46.296,NA,/home/maccamp/lates-wgs/data/lakdiva/Jaffna2.sort.flt.bam,NA,UNK,Sri Lanka,Jaffna2,Indian Ocean
+SRR3165624,SAMN04482567,SRS1284067,UNK,46009810,45091295,6.69989,NA,/home/maccamp/lates-wgs/data/split/SRR3165624.sort.flt.bam,NA,UNK,Fly River,SRR3165624,Australasian
+SRR3165625,SAMN04482568,SRS1284068,UNK,36385434,35592008,5.28765,NA,/home/maccamp/lates-wgs/data/split/SRR3165625.sort.flt.bam,NA,UNK,Fly River,SRR3165625,Australasian
+SRR3165626,SAMN04482569,SRS1284070,UNK,40019282,39174817,5.81982,NA,/home/maccamp/lates-wgs/data/split/SRR3165626.sort.flt.bam,NA,UNK,Fly River,SRR3165626,Australasian
+SRR3165627,SAMN04482570,SRS1284071,UNK,40858088,40059128,5.95206,NA,/home/maccamp/lates-wgs/data/split/SRR3165627.sort.flt.bam,NA,UNK,Fly River,SRR3165627,Australasian
+SRR3165628,SAMN04482571,SRS1284072,UNK,37198470,36318355,5.39644,NA,/home/maccamp/lates-wgs/data/split/SRR3165628.sort.flt.bam,NA,UNK,Fly River,SRR3165628,Australasian
+SRR3165613,SAMN04482556,SRS1284056,UNK,33294808,31924152,4.73449,NA,/home/maccamp/lates-wgs/data/split/SRR3165613.sort.flt.bam,NA,UNK,Indonesia-K,SRS1284056,Wallacean
+SRR3165614,SAMN04482557,SRS1284057,UNK,36112330,35209985,5.22582,NA,/home/maccamp/lates-wgs/data/split/SRR3165614.sort.flt.bam,NA,UNK,Indonesia-K,SRS1284057,Wallacean
+SRR3165615,SAMN04482558,SRS1284058,UNK,39202344,38378631,5.69962,NA,/home/maccamp/lates-wgs/data/split/SRR3165615.sort.flt.bam,NA,UNK,Indonesia-K,SRS1284058,Wallacean
+SRR3165616,SAMN04482559,SRS1284059,UNK,44105489,43004573,6.38517,NA,/home/maccamp/lates-wgs/data/split/SRR3165616.sort.flt.bam,NA,UNK,Indonesia-K,SRS1284059,Wallacean
+SRR3165617,SAMN04482560,SRS1284060,UNK,45680431,44616925,6.62419,NA,/home/maccamp/lates-wgs/data/split/SRR3165617.sort.flt.bam,NA,UNK,Indonesia-K,SRS1284060,Wallacean
+SRR3183267,SAMN04482550,SRS1284050,UNK,76809629,72056421,14.9079,NA,data/split/SRR3183267.sort.flt.bam,NA,UNK,Indonesia-SJ,SRS1284050,Southeast Asian
+SRR3183268,SAMN04482551,SRS1284051,UNK,73904148,69036901,14.3466,NA,data/split/SRR3183268.sort.flt.bam,NA,UNK,Indonesia-SJ,SRS1284051,Southeast Asian
+SRR3183269,SAMN04482552,SRS1284052,UNK,77272102,72724877,15.0254,NA,data/split/SRR3183269.sort.flt.bam,NA,UNK,Indonesia-SJ,SRS1284052,Southeast Asian
+SRR3183270,SAMN04482553,SRS1284053,UNK,171661677,160139179,33.1352,NA,data/split/SRR3183270.sort.flt.bam,NA,UNK,Indonesia-SJ,SRS1284053,Southeast Asian
+SRR3183271,SAMN04482554,SRS1284054,UNK,58564798,54607071,11.3764,NA,data/split/SRR3183271.sort.flt.bam,NA,UNK,Indonesia-SJ,SRS1284054,Southeast Asian
+SRR3165612,SAMN04482555,SRS1284055,UNK,43210183,41319274,6.13043,NA,data/split/SRR3165612.sort.flt.bam,NA,UNK,Indonesia-SU,SRS1284055,Wallacean

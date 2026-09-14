@@ -68,6 +68,7 @@ bcftools view -r NC_066847.1:12000000-19000000 outputs/105/renamed-05.vcf.gz > o
 bcftools view -r NC_066847.1:13250000-13450000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region1.vcf
 bcftools view -r NC_066847.1:17500000-18250000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region2.vcf
 bcftools view -r NC_066847.1:27700000-27800000 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15-region3.vcf
+bcftools view -r NC_066847.1 outputs/105/renamed-05.vcf.gz > outputs/123/vcfs/lca15.vcf
 
 for f in *.vcf; do plink --vcf $f --r2 inter-chr --ld-window-r2 0.2 --out `basename $f vcf`ldf --allow-extra-chr --double-id; done;
 
@@ -159,7 +160,7 @@ loadings
 ```{r}
 loads<-pca1$c1 %>% as_tibble()
 loads$locus<-rownames(pca1$c1)
-loads %>% arrange(-CS1) %>% relocate(locus) %>% filter(CS1 > 0.07)
+loads %>% arrange(-CS1) %>% relocate(locus) %>% filter(CS1 > 0.07) %>% write_csv("outputs/123/loadings.csv")
 ```
 
 ```{r}
@@ -250,7 +251,41 @@ hplotb
 
 df3 %>% group_by(Genotype) %>% summarize(Count=n())
 ```
+Calculate the fst difference
 
+```{r}
+
+df4<-df3 %>% as_tibble()
+mq2<-read_csv("meta/mq.csv")
+mq2$Group<-gsub(" ","",mq2$Group)
+ci<- mq2 %>% dplyr::select(specimen_id,NewPhenotype,Group) %>% left_join(df3 %>% select(specimen_id,NewPhenotype,Genotype,hs, Axis1, Axis2))
+#"outputs/123/vcfs/lca15-region1.vcf", 
+snps2<-import.snpR.data(genotypes = "outputs/123/vcfs/lca15.vcf",
+      sample.meta = ci)
+
+snps3<-snps2[,snps2@sample.meta$Genotype!="Heterozygote"]
+```
+
+This is all messed up
+```{r}
+plot_clusters(snps3, facet = "Genotype", plot_type = "pca", interpolation_method = "af")
+```
+
+```{r}
+df3 %>% select(specimen_id, Genotype) %>% write_csv("meta/mq-genos.csv")
+```
+
+```{r}
+fst<-calc_global_fst(snps2, "Genotype")
+fsts<-get.snpR.stats(fst, facets="Genotype",stats = "fst")
+fdf<-fsts$pairwise %>% as_tibble()
+```
+
+```{r}
+fdf %>% ggplot() +
+  geom_point(aes(x=position, y=fst, fill=fst), pch=21) +
+  scale_fill_viridis_c()
+```
 
 Let's look at genotype frequencies from the burdekin
 
@@ -484,10 +519,8 @@ hplot<-ggplot(df2) +
 hplot
 ```
 
-If you wish to put a little money to it, the most cost effective and smartest thing to do is to put this on a NovaSeq X 10B lane (360Gb)
+High Fst loci between alternative homokaryotypes.
 
- 
+```{r}
 
-It would be $2350.00 for the lane, plus $130 per sample for library prep. Total for 18 samples = $4690.00 (about $260.00 per sample). The amount payable after including the fund would be $2583.50
-
-1800 GB / 360 = 5 lanes
+```

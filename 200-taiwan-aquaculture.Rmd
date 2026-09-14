@@ -54,6 +54,9 @@ m102 %>% group_by(Group) %>% summarise(Mean=mean(Coverage), Min=min(Coverage), M
 ```{r}
 m92 %>% dplyr::select(Path) %>% write_tsv("~/github/barra-lh/bamlists/92.bamlist", col_names = FALSE)
 m92 %>% dplyr::select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/92.names", col_names = FALSE)
+
+gg<-read_csv("meta/mq-genos.csv")
+m92<-m92 %>% left_join(gg)
 meta<-m92
 
 m102 %>% dplyr::select(Path) %>% write_tsv("~/github/barra-lh/bamlists/102.bamlist", col_names = FALSE)
@@ -64,19 +67,28 @@ m102 %>% dplyr::select(specimen_id) %>% write_tsv("~/github/barra-lh/bamlists/10
 
 Call snp in region 1
 
+missingness isn't right, should be higher 87/92
 
 ```{sh, eval=FALSE}
 srun -t 2:00:00 -p bmh --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
--minInd 85 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 87 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
 -r NC_066847.1:13250000-13450000 -out outputs/200/lca15  \
 -minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doVcf 1  > outputs/200/lca15.out 2> outputs/200/lca15.err &
 
 bcftools reheader --samples bamlists/92.names -o outputs/200/lca15-renamed.vcf.gz outputs/200/lca15.vcf.gz
 
+
+srun -t 2:00:00 -p bmh --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
+-minInd 87 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-r NC_066847.1:13250000-13450000 -out outputs/200/lca15-01  \
+-minMaf 0.10 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
+-doGeno 2 -doPost 1 -postCutoff 0.95 -doVcf 1  > outputs/200/lca15-01.out 2> outputs/200/lca15-01.err &
+
+
 #another 2e5 bp region for comparison
 srun -t 1:00:00 -p bml --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
--minInd 85 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
+-minInd 87 -bam bamlists/92.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
 -r NC_066847.1:0-200000 -out outputs/200/null  \
 -minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doVcf 1  > outputs/200/null.out 2> outputs/200/null.err &
@@ -87,18 +99,22 @@ bcftools reheader --samples bamlists/92.names -o outputs/200/null-renamed.vcf.gz
 bcftools +fill-tags outputs/200/lca15-renamed.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'INFO/MAF > 0.10' > outputs/200/lca15-renamed-10.vcf
 
 
-srun -t 2:00:00 -p bmh --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
+#With Sri Lankan Aquaculture
+srun -t 1:00:00 -p bml --mem=48G --nodes=1 --ntasks-per-node=1 --cpus-per-task=12 $HOME/angsd/angsd -nthreads 12 \
 -minInd 97 -bam bamlists/102.bamlist -ref genome/GCF_001640805.2_TLL_Latcal_v3_genomic.fna \
 -r NC_066847.1:13250000-13450000 -out outputs/200/lca15-102 \
 -minMaf 0.05 -minMapQ 20 -minQ 20 -GL 1 -doGLF 2 -doMajorMinor 1 -doMaf 1 -SNP_pval 1e-6 \
 -doGeno 2 -doPost 1 -postCutoff 0.95 -doVcf 1  > outputs/200/lca15-102.out 2> outputs/200/lca15-102.err &
 
 bcftools reheader --samples bamlists/102.names -o outputs/200/lca15-renamed-102.vcf.gz outputs/200/lca15-102.vcf.gz
+bcftools +fill-tags outputs/200/lca15-renamed-102.vcf.gz  -- -t MAF,F_MISSING | bcftools view -i 'INFO/MAF > 0.10' > outputs/200/lca15-renamed-102-10.vcf
 
 ```
-	-> Number of sites retained after filtering: 234 in lca15 region, 168 with MAF of 0.10
-	-> Number of sites retained after filtering: 556 in start of lca15
+	-> Number of sites retained after filtering: 207 
+	-> Number of sites retained after filtering: 520 in start
 
+Including Sri Lankan Aquaculture
+	-> Number of sites retained after filtering: 358 
 
 
 ```{r}
@@ -118,25 +134,148 @@ eig<-pca1$eig/sum(pca1$eig)*100
 
 
 pc12<-ggplot(df) + 
-  geom_point(aes(x=Axis1, y=Axis2, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
+  geom_point(aes(x=Axis1, y=Axis2, fill=Lineage), pch=21, alpha=0.75, cex=2) +
   theme_bw() +
   xlab(paste0("PC1 ",round(eig[1],2), "%")) +
   ylab(paste0("PC2 ",round(eig[2],2), "%")) +
   theme(panel.grid = element_blank()) +
   guides(fill = guide_legend(override.aes = list(pch = 22))) +
-  theme(legend.position = "top") +
-  scale_fill_manual(values=c("red","blue","grey")) 
-
+  theme(legend.position = "top") 
 pc12
+```
 
+
+
+
+
+```{r}
+loadings<-read_csv("outputs/123/loadings.csv")
+loadings$locname<-gsub("\\.\\d","",loadings$locus)
+loadings  %>% arrange(locus)
+```
+
+13,333,630
+13,363,426
+13,376,269
+
+
+
+
+how about a heatmap?
+
+```{r}
+gen2<-gen[loc = loadings$locname]
+
+X <- tab(gen2, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(meta)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+df %>% filter(Lineage=="Southeast Asian")
+
+pc11<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis1, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC1 ",round(eig[1],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") +
+  scale_fill_manual(values=c("red","blue","grey")) + 
+  facet_wrap(.~Lineage)
+pc11
 
 ```
 
 Tamsui looks odd, this is probably because it has a mixture of ancestries.
 
 
+
+ Clustering approach.
+ 
 ```{r}
-snps<-import.snpR.data(genotypes = "outputs/200/lca15-renamed.vcf.gz", 
+
+ddf<-read_tsv("outputs/200/lca15.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X95) %>% mutate(ID=paste0(`FALSE`,"_",X2)) %>%
+  relocate(ID) %>% left_join(chroms %>% select(Chromosome, Chrom), by=c(`FALSE` = "Chromosome")) %>% relocate(Chrom) %>% mutate(ID2=paste0(Chrom," ",X2)) 
+
+#higher maf version
+ddf<-read_tsv("outputs/200/lca15-01.geno.gz", col_names = c("FALSE"))  %>% dplyr::select(-X95) %>% mutate(ID=paste0(`FALSE`,"_",X2)) %>%
+  relocate(ID) %>% left_join(chroms %>% select(Chromosome, Chrom), by=c(`FALSE` = "Chromosome")) %>% relocate(Chrom) %>% mutate(ID2=paste0(Chrom," ",X2)) 
+ddf[ddf==-1]<-NA
+
+ddf2<-ddf
+#ddf2<-ddf %>% filter(ID %in% outliers$ID) 
+m<-ddf2 %>% dplyr::select(-ID, -ID2,-Chrom,-`FALSE`, -X2) %>% as.matrix()
+annot<-data.frame(sample=as.character(colnames(m))) %>% column_to_rownames("sample")
+```
+
+
+
+
+```{r}
+
+m92$Group<-gsub("Burdekin","Burdekin Region",m92$Group)
+m92$Group<-gsub("FitzroyQLD","Fitzroy River",m92$Group)
+mq$Group<-factor(mq$Group, levels=c("Daly River","Roper River","Burdekin Region","Fitzroy River","Australian Aquaculture","Tamsui River"))
+m92<-m92 %>% mutate(PlotPheno=ifelse(Group == "Burdekin Region",NewPhenotype, ifelse(Group=="Daly River", "Daly River Migratory",
+                                                                              ifelse(Group=="Tamsui River", "Tamsui River Migratory", "Unknown/Other"))))
+m92$PlotPheno<-gsub("SFF","Burdekin Region Migratory",m92$PlotPheno)
+m92$PlotPheno<-gsub("SSS","Burdekin Region Resident",m92$PlotPheno)
+m92$specimen_id<-gsub("Mainstream","Aquaculture",m92$specimen_id)
+```
+> viridis(n=3, option="magma")
+[1] "#000004FF" "#B63679FF" "#FCFDBFFF"
+
+
+
+```{r}
+annot$Phenotype<-m92$PlotPheno
+annot$`Sampling Location`<-m92$Group
+annot$Genotype<-m92$Genotype
+annot_colors=list(Phenotype=c("Burdekin Region Resident"="blue","Burdekin Region Migratory"="red","Daly River Migratory"="deeppink4","Tamsui River Migratory"="violet", "Unknown/Other"="grey75"),"Sampling Location"=c("Daly River"="pink","Roper River"="purple","Burdekin Region"="darkorange1", "Fitzroy River"="darkgoldenrod1", "Australian Aquaculture"="green", "Tamsui River"="violet"), "Genotype"=c("Ancestral"="#000004FF","Heterozygote"="#B63679FF","Derived"="#FCFDBFFF") )
+
+
+
+```
+
+> viridis(n=3, option="magma")
+[1] "#000004FF" "#B63679FF" "#FCFDBFFF
+ color=colorRampPalette(c("#000004FF","#B63679FF","#FCFDBFFF"))))
+ 
+```{r}
+as.ggplot(
+pheatmap(m,annotation_col = annot, cluster_rows = TRUE, annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = m92$specimen_id, labels_row = ddf2$ID2, fontsize_row = 6, fontsize_col = 7,
+            angle_col = 315)
+)
+
+ggsave("outputs/200/heatmap.pdf", width=20, height=18)
+ggsave("outputs/200/heatmap.jpeg", width=20, height=18)
+
+```
+
+
+```{r}
+as.ggplot(
+pheatmap(m, annotation_col = annot, cluster_rows = TRUE,  annotation_colors = annot_colors, color=colorRampPalette(viridis(3, option="cividis", direction=-1, alpha = 0.75))(3),
+                   labels_col = meta$specimen_id, labels_row = ddf2$ID2, fontsize_row = 8, fontsize_col = 6,
+         angle_col = 315)) +
+         
+#  ggtitle("Heatmap of associated barra variants on Lca24\n") +
+  labs(caption="\nIndividual") +
+  theme(plot.title = element_text(hjust=0.5)) +
+  theme(plot.caption = element_text(size=14, hjust=0.4, face="bold")) 
+
+ggsave("outputs/116/top-associated-variants.jpeg", width=14, height=6)
+ggsave("outputs/116/top-associated-variants.pdf", width=14, height=6)
+
+```
+
+```{r}
+snps<-import.snpR.data(genotypes = "outputs/200/lca15-renamed-10.vcf", 
       sample.meta = meta %>% dplyr::select(specimen_id,NewPhenotype))
 ```
 
@@ -157,23 +296,73 @@ hplot<-ggplot(df2) +
   guides(fill = guide_legend(override.aes = list(pch = 22))) +
   theme(legend.position = "right") +
   scale_fill_viridis_c(option="viridis") +
-  facet_wrap(Lineage~.)
-
+  facet_grid(.~Lineage)
 hplot
+```
 
-hplot13<-ggplot(df2) + 
-  geom_point(aes(x=Axis1, y=Axis3, fill=hs),pch=21, alpha=0.75, cex=2) +
+
+
+```{r}
+vcf<-read.vcfR(file="outputs/200/lca15-renamed-102-10.vcf")
+
+genind<-vcfR2genind(vcf)
+genind@pop<-as.factor(m102$NewPhenotype)
+
+gen<-genind
+X <- tab(gen, NA.method="mean")
+
+pca1 <- dudi.pca(X,scannf=FALSE,scale=FALSE,nf=3)
+
+df<-pca1$li
+df<-df %>% bind_cols(m102)
+eig<-pca1$eig/sum(pca1$eig)*100
+
+
+pc12<-ggplot(df) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=NewPhenotype),pch=21, alpha=0.75, cex=2) +
   theme_bw() +
   xlab(paste0("PC1 ",round(eig[1],2), "%")) +
-  ylab(paste0("PC2 ",round(eig[3],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
+  theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(override.aes = list(pch = 22))) +
+  theme(legend.position = "top") +
+  scale_fill_manual(values=c("red","blue","grey")) +
+  facet_grid(NewPhenotype~Lineage)
+
+pc12
+
+
+```
+
+
+```{r}
+snps<-import.snpR.data(genotypes = "outputs/200/lca15-renamed-102-10.vcf", 
+      sample.meta = m102 %>% dplyr::select(specimen_id,NewPhenotype))
+```
+
+```{r}
+hets<-calc_hs(snps)
+ho<-get.snpR.stats(hets, stats="hs")
+h2o<-ho$sample %>% dplyr::select(specimen_id, NewPhenotype, hs)
+h2o
+df2<-df %>% left_join(h2o)
+```
+```{r}
+hplot<-ggplot(df2) + 
+  geom_point(aes(x=Axis1, y=Axis2, fill=hs,shape=Lineage), alpha=0.75, cex=2) +
+  theme_bw() +
+  xlab(paste0("PC1 ",round(eig[1],2), "%")) +
+  ylab(paste0("PC2 ",round(eig[2],2), "%")) +
   theme(panel.grid = element_blank()) +
   guides(fill = guide_legend(override.aes = list(pch = 22))) +
   theme(legend.position = "right") +
   scale_fill_viridis_c(option="viridis") +
+  scale_shape_manual(values=c(21,22,24,25)) +
   facet_wrap(Group~Lineage)
-hplot13
-```
 
+hplot
+
+```
 
 
 
